@@ -1,0 +1,10 @@
+## vscode
+.vscode
+
+##LaTex
+*.fdb_latexmk
+*.synctex
+*.synctex(busy)
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync

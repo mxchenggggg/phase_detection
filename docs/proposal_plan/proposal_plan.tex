@@ -1,0 +1,265 @@
+\documentclass[11pt]{article} \usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
+\usepackage{amsfonts, amsmath, amssymb, amsthm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[british,calc]{datetime2}
+\usepackage{advdate}
+\usepackage{tikz}
+\usetikzlibrary{calc,arrows}
+
+\newdimen\XCoord
+\newdimen\YCoord
+
+\newcommand*{\ExtractCoordinate}[1]{\path (#1); \pgfgetlastxy{\XCoord}{\YCoord};}%
+
+\title{Surgical Phase Detection Using Deep Learning\\ Proposal \& Plan}
+\author{Xiaorui Zhang, Wenkai Luo, Xucheng Ma  }
+\date{February 2022}
+
+
+% https://tex.stackexchange.com/questions/61237/timeline-and-tikz
+% ============================= modify these for altered appearence
+\pgfmathsetmacro{\mintime}{0}
+\pgfmathsetmacro{\maxtime}{14}
+\newcommand{\timeunit}{Week}
+\pgfmathtruncatemacro{\timeintervals}{14}
+\pgfmathsetmacro{\scaleitemseparation}{3}
+\pgfmathsetmacro{\timenodewidth}{8cm}
+\newcounter{itemnumber}
+\setcounter{itemnumber}{0}
+\newcommand{\lastnode}{n-0}
+% ============================= 
+
+\newcommand{\timeentry}[2]{% time, description
+\stepcounter{itemnumber}
+\node[below right,text width=\timenodewidth] (n-\theitemnumber) at (\lastnode.south west) {#2};
+\edef\lastnode{n-\theitemnumber}
+\expandafter\edef\csname nodetime\theitemnumber \endcsname{#1}
+}
+
+
+\newcommand{\drawtimeline}[1]{% start date
+    \draw[very thick,-latex] (0,0) -- ($(\lastnode.south west)-(\scaleitemseparation,0)+(0,-1)$);
+    \ExtractCoordinate{n-\theitemnumber.south}
+    \pgfmathsetmacro{\yposition}{\YCoord/28.452755}
+    \foreach \x in {1,...,\theitemnumber}
+    {   \pgfmathsetmacro{\timeposition}{\yposition/(\maxtime-\mintime)*\csname nodetime\x \endcsname}
+        %\node[right] at (0,\timeposition) {\yposition};
+        \draw (0,\timeposition) -- (0.5,\timeposition) -- ($(n-\x.west)-(0.5,0)$) -- (n-\x.west);
+    }
+    \foreach \x in {0,...,\timeintervals}
+    {   \pgfmathsetmacro{\labelposition}{\yposition/(\maxtime-\mintime)*\x}
+        \node[left] (label-\x) at (-0.2,\labelposition) {\textcolor{gray}{\bf \timeunit\ \the\numexpr\x + 1\relax} \ \DTMdate{#1 + \the\numexpr\x * 7\relax}\ -\ \DTMdate{#1 + \the\numexpr\x * 7 +6\relax}};
+        \draw (label-\x.east) -- ++ (0.2,0);
+    }   
+}
+% https://tex.stackexchange.com/questions/61237/timeline-and-tikz
+
+% \DTMsetdatestyle{mdyy}
+\renewcommand{\DTMdisplaydate}[4]{#2/#3}
+\begin{document}
+
+\maketitle
+
+\section{Stated topic and goal}
+Surgical phase recognition plays a crucial role in the era of digitized surgery. Deep learning solutions have seen great success in endoscopic surgeries. Currently, no prior work has investigated its application in skull-base surgery (Cortical Mastoidectomy). This project will benchmark existing DL solutions and create an innovative DL segmentation algorithm in skull-based surgery.
+\section{Team members, mentor}
+\begin{itemize}
+    \item \textbf{Students}:
+
+          Xucheng Ma, Xiaorui Zhang, Wenkai Luo
+    \item \textbf{Mentors}:
+
+          Max Li, Danielle Trakimas, Dr.Francis Creighton, Prof. Mathias Unberath, Prof. Russ Taylor
+\end{itemize}
+
+\section{Relevance/importance}
+Surgical phase recognition has numerous potential medical applications. Such as automatic indexing of surgical video databases, and optimization of real-time operating room scheduling. It’s also a foundation of intelligent context-aware system, which facilitates surgery monitoring, surgical protocol extraction, and decision support.
+\section{Short technical summary of approach}
+Kevin
+\section{Deliverables}
+\newpage
+\newpage
+\section{Timeline \& Milestones}
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \node[inner sep=0] (n-0) at (\scaleitemseparation,0) {};
+        \timeentry{0.5}{Literature review}
+        \timeentry{1.5}{Proposal and plan}
+        \timeentry{2}{Start data annotations, environment setup}
+        \timeentry{2.6}{\textcolor{blue}{\bf Proposal and Plan Presentation}}
+        \timeentry{3.4}{\textcolor{red}{\bf Sample Dataset} }
+        \timeentry{3.6}{Finish environment setup}
+        \timeentry{4.5}{Start data-prepocession for \\ benchmark methods}
+        \timeentry{5.5}{Start implementing model evaluation}
+        \timeentry{6.5}{Ready to training benchmart methods}
+        \timeentry{7.2}{\textcolor{red}{\bf Computational resources}}
+        \timeentry{7.3}{\textcolor{red}{\bf Fullly annodated dataset}}
+        \timeentry{7.4}{\textcolor{blue}{\bf Seminar Presentation}}
+        \timeentry{7.6}{Benchmark methods training}
+        \timeentry{8.5}{\textcolor{blue}{\bf Minimum Deliverables:\\ Benchmarking $\geq3$ methods}}
+        \timeentry{9.3}{\textcolor{blue}{\bf Checkpoint Presentation}}
+        \timeentry{9.7}{\textcolor{blue}{\bf Initial design of improved method}}
+        \timeentry{10.5}{Train and evaluate improved method}
+        \timeentry{11.5}{\textcolor{blue}{\bf Expected Deliverables:\\ Experiment results of improved method}}
+        \timeentry{12.5}{Poster and final report}
+        \timeentry{13.5}{Additional experiments}
+        \timeentry{14}{\textcolor{blue}{\bf Final presentation}}
+        \drawtimeline{2022-1-24}
+    \end{tikzpicture}
+    \caption{Project timeline, \textcolor{blue}{Milestones} labeled in \textcolor{blue}{blue}, \textcolor{red}{Deliverables deadline} labeled in \textcolor{red}{red}}
+\end{figure}
+
+% \begin{enumerate}
+%     \item 01/24 - 01/30
+%           \begin{itemize}
+%               \item literature review
+%           \end{itemize}
+%     \item 01/31 - 02/06
+%           \begin{itemize}
+%               \item proposal
+%               \item project plan
+%           \end{itemize}
+%     \item 02/07 - 02/13
+%           \begin{itemize}
+%               \item start working on:
+%                     \begin{itemize}
+%                         \item data annotations
+%                         \item environment setup
+%                         \item reading and running existing code
+%                     \end{itemize}
+%               \item proposal presentation 02/10
+%           \end{itemize}
+%     \item 02/14 - 02/20
+%           \begin{itemize}
+%               \item check points
+%                     \begin{itemize}
+%                         \item sample data set: at least one video, at least phase label for each frame
+%                         \item reproduce EndoNet results on public laparoscopic dataset (Cholec80)
+%                     \end{itemize}
+%           \end{itemize}
+%     \item 02/21 - 02/27
+%           \begin{itemize}
+%               \item check points
+%                     \begin{itemize}
+%                         \item more annotated data
+%                     \end{itemize}
+%               \item start working on
+%                     \begin{itemize}
+%                         \item data pre-processing for different existing methods
+%                     \end{itemize}
+%           \end{itemize}
+%     \item 02/28 - 03/06
+%           \begin{itemize}
+%               \item start working on
+%                     \begin{itemize}
+%                         \item implementing evaluation functions
+%                     \end{itemize}
+%           \end{itemize}
+%     \item 03/07 - 03/13
+%           \begin{itemize}
+%               \item checkpoints
+%                     \begin{itemize}
+%                         \item data pre-processing
+%                         \item evaluation
+%                     \end{itemize}
+%           \end{itemize}
+%     \item 03/14 - 03/20
+%           \begin{itemize}
+%               \item seminar presentation
+%               \item benchmark methods training
+%           \end{itemize}
+%     \item 03/21 - 03/27(Spring Break)
+%           \begin{itemize}
+%               \item checkpoints
+%                     \begin{itemize}
+%                         \item minimum deliverable: benchmarks of at least 3 methods, evaluation and comparison
+%                     \end{itemize}
+%           \end{itemize}
+%     \item 03/28 - 04/03
+%           \begin{itemize}
+%               \item checkpoint presentation
+%               \item design improved network
+%           \end{itemize}
+%     \item 04/04 - 04/10
+%           \begin{itemize}
+%               \item start working on
+%                     \begin{itemize}
+%                         \item training improved network
+%                         \item evaluating improved network
+%                     \end{itemize}
+%           \end{itemize}
+%     \item 04/11 - 04/17
+%           \begin{itemize}
+%               \item checkpoints
+%                     \begin{itemize}
+%                         \item expected deliverable: experiment results
+%                     \end{itemize}
+%           \end{itemize}
+%     \item 04/18 - 04/24
+%           \begin{itemize}
+%               \item Start working on
+%                     \begin{itemize}
+%                         \item poster
+%                         \item final report
+%                     \end{itemize}
+%               \item additional experiment if needed
+%           \end{itemize}
+%     \item 04/25 - 05/01
+%           \begin{itemize}
+%               \item checkpoints
+%                     \begin{itemize}
+%                         \item poster
+%                         \item final report
+%                     \end{itemize}
+%           \end{itemize}
+% \end{enumerate}
+
+\section{List of dependencies \& plan for resolving}
+\begin{enumerate}
+    \item Dataset \& Annotations
+          \begin{enumerate}
+              \item Dataset: Cortical mastoidectomy video dataset provided by JHMI $\rightarrow$ Need to talk to Dr. Danielle Trakimas to obtain videos.
+              \item Annotation: Phase definition and annotation protocol $\rightarrow$ Need to talk to Dr. Danielle Trakimas to finalize the annotation protocol and start annotations.
+          \end{enumerate}
+    \item Computer, GPU, and server setup
+          \begin{enumerate}
+              \item Computer: Our personal computers with the required packages installed
+                    \begin{enumerate}
+                        \item Environment: Pytorch+torchvision+cuda
+                        \item Internet connection to remotely access GPU server.
+                    \end{enumerate}
+              \item GPU resource: ARCADE Lab
+                    \begin{enumerate}
+                        \item ARCADE Lab access $\rightarrow$ Need to apply and obtain lab access approval from Prof. Mathias Unberath.
+                        \item Remote server $\rightarrow$ Need to set up the remote GPU server service on the ARCADE Lab.
+                    \end{enumerate}
+          \end{enumerate}
+    \item Existing Framework \& Public dataset
+          \begin{enumerate}
+              \item Existing Framework: Open source frameworks are available online from Paperwithcode and Github
+                    \begin{enumerate}
+                        \item EndoNet: Not available online but should be able to be reproduced.
+                        \item MTRCNet-CL: \url{https://github.com/YuemingJin/MTRCNet-CL}
+                        \item Trans-SVNet: \url{https://github.com/xjgaocs/Trans-SVNet}
+                    \end{enumerate}
+              \item Public dataset:
+                    \begin{enumerate}
+                        \item Cholec80 $\rightarrow$ Need to apply to CAMMA for dataset access. \\(\url{http://camma.u-strasbg.fr/datasets})
+                        \item M2CAI 2016 Challenge Datasets $\rightarrow$ Need to apply to CAMMA for dataset access. \\(\url{http://camma.u-strasbg.fr/datasets})
+                    \end{enumerate}
+          \end{enumerate}
+    \item Clinical advice
+          \begin{enumerate}
+              \item operation analysis
+              \item experiment result analysis
+          \end{enumerate}
+          Need to obtain advice from Dr. Danielle Trakimas.
+\end{enumerate}
+\section{Management Plan}
+Xucheng
+\section{Reading list}
+ALL
+
+\end{document}
