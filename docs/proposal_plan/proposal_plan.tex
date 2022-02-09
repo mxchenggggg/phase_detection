@@ -7,18 +7,12 @@
 \usepackage{tikz}
 \usetikzlibrary{calc,arrows}
 
+% Timeline https://tex.stackexchange.com/questions/61237/timeline-and-tikz
 \newdimen\XCoord
 \newdimen\YCoord
-
-\newcommand*{\ExtractCoordinate}[1]{\path (#1); \pgfgetlastxy{\XCoord}{\YCoord};}%
-
-\title{Surgical Phase Detection Using Deep Learning\\ Proposal \& Plan}
-\author{Xiaorui Zhang, Wenkai Luo, Xucheng Ma  }
-\date{February 2022}
-
-
-% https://tex.stackexchange.com/questions/61237/timeline-and-tikz
-% ============================= modify these for altered appearence
+\newcommand*{\ExtractCoordinate}[1]{\path (#1); \pgfgetlastxy{\XCoord}{\YCoord};}
+% modify these for altered timeline appearance
+% ============================= 
 \pgfmathsetmacro{\mintime}{0}
 \pgfmathsetmacro{\maxtime}{14}
 \newcommand{\timeunit}{Week}
@@ -29,15 +23,14 @@
 \setcounter{itemnumber}{0}
 \newcommand{\lastnode}{n-0}
 % ============================= 
-
+% entry in timeline
 \newcommand{\timeentry}[2]{% time, description
 \stepcounter{itemnumber}
 \node[below right,text width=\timenodewidth] (n-\theitemnumber) at (\lastnode.south west) {#2};
 \edef\lastnode{n-\theitemnumber}
 \expandafter\edef\csname nodetime\theitemnumber \endcsname{#1}
 }
-
-
+% timeline scale and labels
 \newcommand{\drawtimeline}[1]{% start date
     \draw[very thick,-latex] (0,0) -- ($(\lastnode.south west)-(\scaleitemseparation,0)+(0,-1)$);
     \ExtractCoordinate{n-\theitemnumber.south}
@@ -50,27 +43,28 @@
     \foreach \x in {0,...,\timeintervals}
     {   \pgfmathsetmacro{\labelposition}{\yposition/(\maxtime-\mintime)*\x}
         \node[left] (label-\x) at (-0.2,\labelposition) {\textcolor{gray}{\bf \timeunit\ \the\numexpr\x + 1\relax} \ \DTMdate{#1 + \the\numexpr\x * 7\relax}\ -\ \DTMdate{#1 + \the\numexpr\x * 7 +6\relax}};
-        \draw (label-\x.east) -- ++ (0.2,0);
+        \draw (label-\x.east) -- ++ (0.2,0.0);
     }   
 }
-% https://tex.stackexchange.com/questions/61237/timeline-and-tikz
 
-% \DTMsetdatestyle{mdyy}
+% set date format as mm//dd
 \renewcommand{\DTMdisplaydate}[4]{#2/#3}
+
+\title{Surgical Phase Detection Using Deep Learning\\ Proposal \& Plan}
+\author{Xiaorui Zhang, Wenkai Luo, Xucheng Ma}
+\date{February 2022}
+
 \begin{document}
 
 \maketitle
 
 \section{Stated topic and goal}
 Surgical phase recognition plays a crucial role in the era of digitized surgery. Deep learning solutions have seen great success in endoscopic surgeries. Currently, no prior work has investigated its application in skull-base surgery (Cortical Mastoidectomy). This project will benchmark existing DL solutions and create an innovative DL segmentation algorithm in skull-based surgery.
+
 \section{Team members, mentor}
 \begin{itemize}
-    \item \textbf{Students}:
-
-          Xucheng Ma, Xiaorui Zhang, Wenkai Luo
-    \item \textbf{Mentors}:
-
-          Max Li, Danielle Trakimas, Dr.Francis Creighton, Prof. Mathias Unberath, Prof. Russ Taylor
+    \item \textbf{Students}:\\Xucheng Ma, Xiaorui Zhang, Wenkai Luo
+    \item \textbf{Mentors}:\\Max Li, Danielle Trakimas, Dr.Francis Creighton, Prof. Mathias Unberath, Prof. Russ Taylor
 \end{itemize}
 
 \section{Relevance/importance}
@@ -78,9 +72,28 @@ Surgical phase recognition has numerous potential medical applications. Such as 
 \section{Short technical summary of approach}
 Kevin
 \section{Deliverables}
-\newpage
+Project deliverables are listed as follows:
+\begin{itemize}
+    \item \textbf{Minimum Deliverables}
+    \begin{itemize}
+        \item New dataset from cortical mastoidectomy videos (with Danielle's help)
+        \item At least 3  methods​
+        \item All methods trained and evaluated on new dataset​
+    \end{itemize}
+    \item \textbf{Expected Deliverables}
+    \begin{itemize}
+        \item Experiments and comparison with existing methods
+        \item Ablation study
+    \end{itemize}
+    \item \textbf{Maximum Deliverables}
+    \begin{itemize}
+        \item Conference paper
+    \end{itemize}
+\end{itemize}
+
 \newpage
 \section{Timeline \& Milestones}
+Figure \ref{fig:timeline} shows the project timeline. \textcolor{blue}{Milestones} are labeled in blue, and deadlines for resolving \textcolor{red}{dependencies} are labeled in red. Other entries in the timeline indicate either start point or end point of tasks.
 \begin{figure}[!ht]
     \centering
     \begin{tikzpicture}
@@ -109,6 +122,7 @@ Kevin
         \drawtimeline{2022-1-24}
     \end{tikzpicture}
     \caption{Project timeline, \textcolor{blue}{Milestones} labeled in \textcolor{blue}{blue}, \textcolor{red}{Deliverables deadline} labeled in \textcolor{red}{red}}
+    \label{fig:timeline}
 \end{figure}
 
 % \begin{enumerate}
