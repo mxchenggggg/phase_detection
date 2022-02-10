@@ -5,6 +5,8 @@
 \usepackage[british,calc]{datetime2}
 \usepackage{advdate}
 \usepackage{tikz}
+\usepackage{booktabs}
+
 \usetikzlibrary{calc,arrows}
 
 % Timeline https://tex.stackexchange.com/questions/61237/timeline-and-tikz
@@ -50,6 +52,8 @@
 % set date format as mm//dd
 \renewcommand{\DTMdisplaydate}[4]{#2/#3}
 
+\renewcommand{\refname}{Reading List}
+
 \title{Surgical Phase Detection Using Deep Learning\\ Proposal \& Plan}
 \author{Xiaorui Zhang, Wenkai Luo, Xucheng Ma}
 \date{February 2022}
@@ -91,7 +95,6 @@ Project deliverables are listed as follows:
     \end{itemize}
 \end{itemize}
 
-\newpage
 \section{Timeline \& Milestones}
 Figure \ref{fig:timeline} shows the project timeline. \textcolor{blue}{Milestones} are labeled in blue, and deadlines for resolving \textcolor{red}{dependencies} are labeled in red. Other entries in the timeline indicate either start point or end point of tasks.
 \begin{figure}[!ht]
@@ -108,14 +111,14 @@ Figure \ref{fig:timeline} shows the project timeline. \textcolor{blue}{Milestone
         \timeentry{5.5}{Start implementing model evaluation}
         \timeentry{6.5}{Ready to training benchmart methods}
         \timeentry{7.2}{\textcolor{red}{\bf Computational resources}}
-        \timeentry{7.3}{\textcolor{red}{\bf Fullly annodated dataset}}
+        \timeentry{7.3}{\textcolor{red}{\bf Fullly annotated dataset}}
         \timeentry{7.4}{\textcolor{blue}{\bf Seminar Presentation}}
         \timeentry{7.6}{Benchmark methods training}
-        \timeentry{8.5}{\textcolor{blue}{\bf Minimum Deliverables:\\ Benchmarking $\geq3$ methods}}
+        \timeentry{8.5}{\textcolor{blue}{\bf Minimum Deliverables}}
         \timeentry{9.3}{\textcolor{blue}{\bf Checkpoint Presentation}}
         \timeentry{9.7}{\textcolor{blue}{\bf Initial design of improved method}}
         \timeentry{10.5}{Train and evaluate improved method}
-        \timeentry{11.5}{\textcolor{blue}{\bf Expected Deliverables:\\ Experiment results of improved method}}
+        \timeentry{11.5}{\textcolor{blue}{\bf Expected Deliverables}}
         \timeentry{12.5}{Poster and final report}
         \timeentry{13.5}{Additional experiments}
         \timeentry{14}{\textcolor{blue}{\bf Final presentation}}
@@ -124,111 +127,6 @@ Figure \ref{fig:timeline} shows the project timeline. \textcolor{blue}{Milestone
     \caption{Project timeline, \textcolor{blue}{Milestones} labeled in \textcolor{blue}{blue}, \textcolor{red}{Deliverables deadline} labeled in \textcolor{red}{red}}
     \label{fig:timeline}
 \end{figure}
-
-% \begin{enumerate}
-%     \item 01/24 - 01/30
-%           \begin{itemize}
-%               \item literature review
-%           \end{itemize}
-%     \item 01/31 - 02/06
-%           \begin{itemize}
-%               \item proposal
-%               \item project plan
-%           \end{itemize}
-%     \item 02/07 - 02/13
-%           \begin{itemize}
-%               \item start working on:
-%                     \begin{itemize}
-%                         \item data annotations
-%                         \item environment setup
-%                         \item reading and running existing code
-%                     \end{itemize}
-%               \item proposal presentation 02/10
-%           \end{itemize}
-%     \item 02/14 - 02/20
-%           \begin{itemize}
-%               \item check points
-%                     \begin{itemize}
-%                         \item sample data set: at least one video, at least phase label for each frame
-%                         \item reproduce EndoNet results on public laparoscopic dataset (Cholec80)
-%                     \end{itemize}
-%           \end{itemize}
-%     \item 02/21 - 02/27
-%           \begin{itemize}
-%               \item check points
-%                     \begin{itemize}
-%                         \item more annotated data
-%                     \end{itemize}
-%               \item start working on
-%                     \begin{itemize}
-%                         \item data pre-processing for different existing methods
-%                     \end{itemize}
-%           \end{itemize}
-%     \item 02/28 - 03/06
-%           \begin{itemize}
-%               \item start working on
-%                     \begin{itemize}
-%                         \item implementing evaluation functions
-%                     \end{itemize}
-%           \end{itemize}
-%     \item 03/07 - 03/13
-%           \begin{itemize}
-%               \item checkpoints
-%                     \begin{itemize}
-%                         \item data pre-processing
-%                         \item evaluation
-%                     \end{itemize}
-%           \end{itemize}
-%     \item 03/14 - 03/20
-%           \begin{itemize}
-%               \item seminar presentation
-%               \item benchmark methods training
-%           \end{itemize}
-%     \item 03/21 - 03/27(Spring Break)
-%           \begin{itemize}
-%               \item checkpoints
-%                     \begin{itemize}
-%                         \item minimum deliverable: benchmarks of at least 3 methods, evaluation and comparison
-%                     \end{itemize}
-%           \end{itemize}
-%     \item 03/28 - 04/03
-%           \begin{itemize}
-%               \item checkpoint presentation
-%               \item design improved network
-%           \end{itemize}
-%     \item 04/04 - 04/10
-%           \begin{itemize}
-%               \item start working on
-%                     \begin{itemize}
-%                         \item training improved network
-%                         \item evaluating improved network
-%                     \end{itemize}
-%           \end{itemize}
-%     \item 04/11 - 04/17
-%           \begin{itemize}
-%               \item checkpoints
-%                     \begin{itemize}
-%                         \item expected deliverable: experiment results
-%                     \end{itemize}
-%           \end{itemize}
-%     \item 04/18 - 04/24
-%           \begin{itemize}
-%               \item Start working on
-%                     \begin{itemize}
-%                         \item poster
-%                         \item final report
-%                     \end{itemize}
-%               \item additional experiment if needed
-%           \end{itemize}
-%     \item 04/25 - 05/01
-%           \begin{itemize}
-%               \item checkpoints
-%                     \begin{itemize}
-%                         \item poster
-%                         \item final report
-%                     \end{itemize}
-%           \end{itemize}
-% \end{enumerate}
 
 \section{List of dependencies \& plan for resolving}
 \begin{enumerate}
@@ -273,7 +171,9 @@ Figure \ref{fig:timeline} shows the project timeline. \textcolor{blue}{Milestone
 \end{enumerate}
 \section{Management Plan}
 Xucheng
-\section{Reading list}
-ALL
+
+\nocite{*}
+\bibliographystyle{unsrt}
+\bibliography{bibfile}
 
 \end{document}
