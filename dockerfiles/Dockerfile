@@ -6,7 +6,10 @@ RUN apt update && \
     apt install -y \
     sudo \
     git \
-    vim
+    vim \
+    ffmpeg \
+    libsm6 \
+    libxext6
 
 RUN apt install -y python3.8 python3.8-distutils curl && \
     curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
@@ -14,7 +17,8 @@ RUN apt install -y python3.8 python3.8-distutils curl && \
 
 COPY pytorch.txt pytorch.txt
 
-RUN pip install -r pytorch.txt -f https://download.pytorch.org/whl/cu113/torch_stable.html
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r pytorch.txt -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
 COPY requirements.txt requirements.txt
 
