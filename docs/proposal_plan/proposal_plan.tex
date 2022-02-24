@@ -81,8 +81,8 @@ Project deliverables are listed as follows:
     \item \textbf{Minimum Deliverables}
     \begin{itemize}
         \item New dataset from cortical mastoidectomy videos (with Danielle's help)
-        \item At least 3  methods​
-        \item All methods trained and evaluated on new dataset​
+        \item At least three methods
+        \item All methods trained and evaluated on the new dataset
     \end{itemize}
     \item \textbf{Expected Deliverables}
     \begin{itemize}
@@ -129,49 +129,16 @@ Figure \ref{fig:timeline} shows the project timeline. \textcolor{blue}{Milestone
 \end{figure}
 
 \section{List of dependencies \& plan for resolving}
-\begin{enumerate}
-    \item Dataset \& Annotations
-          \begin{enumerate}
-              \item Dataset: Cortical mastoidectomy video dataset provided by JHMI $\rightarrow$ Need to talk to Dr. Danielle Trakimas to obtain videos.
-              \item Annotation: Phase definition and annotation protocol $\rightarrow$ Need to talk to Dr. Danielle Trakimas to finalize the annotation protocol and start annotations.
-          \end{enumerate}
-    \item Computer, GPU, and server setup
-          \begin{enumerate}
-              \item Computer: Our personal computers with the required packages installed
-                    \begin{enumerate}
-                        \item Environment: Pytorch+torchvision+cuda
-                        \item Internet connection to remotely access GPU server.
-                    \end{enumerate}
-              \item GPU resource: ARCADE Lab
-                    \begin{enumerate}
-                        \item ARCADE Lab access $\rightarrow$ Need to apply and obtain lab access approval from Prof. Mathias Unberath.
-                        \item Remote server $\rightarrow$ Need to set up the remote GPU server service on the ARCADE Lab.
-                    \end{enumerate}
-          \end{enumerate}
-    \item Existing Framework \& Public dataset
-          \begin{enumerate}
-              \item Existing Framework: Open source frameworks are available online from Paperwithcode and Github
-                    \begin{enumerate}
-                        \item EndoNet: Not available online but should be able to be reproduced.
-                        \item MTRCNet-CL: \url{https://github.com/YuemingJin/MTRCNet-CL}
-                        \item Trans-SVNet: \url{https://github.com/xjgaocs/Trans-SVNet}
-                    \end{enumerate}
-              \item Public dataset:
-                    \begin{enumerate}
-                        \item Cholec80 $\rightarrow$ Need to apply to CAMMA for dataset access. \\(\url{http://camma.u-strasbg.fr/datasets})
-                        \item M2CAI 2016 Challenge Datasets $\rightarrow$ Need to apply to CAMMA for dataset access. \\(\url{http://camma.u-strasbg.fr/datasets})
-                    \end{enumerate}
-          \end{enumerate}
-    \item Clinical advice
-          \begin{enumerate}
-              \item operation analysis
-              \item experiment result analysis
-          \end{enumerate}
-          Need to obtain advice from Dr. Danielle Trakimas.
-\end{enumerate}
-\section{Management Plan}
-Xucheng
 
+\includegraphics[width=\textwidth]{dependency.png}
+
+\section{Management Plan}
+\begin{itemize}
+    \item We meet with our mentors and report weekly progress every Friday.
+    \item Slack are used for daily communication.
+    \item All project relevent codes and documentation are managed with git.
+    \item Project progress is monitored with Gantt Chart. 
+\end{itemize}
 \nocite{*}
 \bibliographystyle{unsrt}
 \bibliography{bibfile}
