@@ -74,7 +74,15 @@ Surgical phase recognition plays a crucial role in the era of digitized surgery.
 \section{Relevance/importance}
 Surgical phase recognition has numerous potential medical applications. Such as automatic indexing of surgical video databases and real-time operating room scheduling optimization. It’s also a foundation of an intelligent context-aware system, which facilitates surgery monitoring, surgical protocol extraction, and decision support. To be more specific on our project, Mastoidectomy is a highly delicate and complex surgery. There are many facial nerves and blood vessels around the region of operation. It would be ideal for the surgeon to have an intelligent context-awareness system to facilitate decision-making. Our online video segmentation model would be necessary for this system to be aware of the current surgical phase. 
 \section{Short technical summary of approach}
-Kevin
+Since considering the surgical phase segmentation as a sequential problem rather than a per-frame classification, the proposed deep learning neural network needs to extract spatiotemporal features.
+\begin{itemize}
+    \item \textit{Spatial feature extraction:}\\
+    One of the essential parts of the architecture is the spatial feature extractor, which extracts the feature from the frames and converts them into an abstract representation format. Based on the idea of transfer learning, the pre-trained convolutional neural network(CNN) models have been proved to be stat-of-the-art on many computer vision tasks. Furthermore, the pre-trained model can extract more specific features with the fine-tuning process using the mastoidectomy dataset. 
+    \item \textit{Spatiotemporal model:}\\
+   The most crucial part of the architecture is the spatiotemporal model, which is to capture the temporal patterns from the extracted per-frame spatial features from video. The temporal patterns are essential to make a correct prediction since the patterns can provide clues of surgery environment change and the instrument motion. Recurrent neural networks such as LSTM, temporal convolution neural network (TCN), and transformer are promising architectures for capturing the temporal pattern. However, some research argues that LSTM can only capture short-term information while long-term context might be beneficial for accurate segmentation. All of them will be implemented on the mastoidectomy dataset in our project.
+   \item \textit{High-level Classifier:}\\
+   The fully connected neural network(FCNN) will then be trained with the ground truths to make the phase decision based on the extracted spatiotemporal feature since it can approximate any arbitrary function. One crucial concern is the over-fitting issue, which can be compensated by different training skills such as drop-out and batch-normalization. 
+\end{itemize}
 \section{Deliverables}
 Project deliverables are listed as follows:
 \begin{itemize}
