@@ -6,6 +6,7 @@
 \usepackage{advdate}
 \usepackage{tikz}
 \usepackage{booktabs}
+\usepackage{float}
 
 \usetikzlibrary{calc,arrows}
 
@@ -83,6 +84,13 @@ Instead of considering surgical phase segmentation as a per-frame classification
    \item \textit{High-level Classifier:}\\
    The fully connected neural network(FCNN) will then be trained with the ground truths to make the phase decision based on the extracted spatiotemporal feature since it can approximate any arbitrary function. One crucial concern is the over-fitting issue, which can be compensated by different training skills such as drop-out and batch-normalization. 
 \end{itemize}
+\begin{figure}[H]
+    \includegraphics[scale=0.3]{Flow.png}
+    \centering
+    \caption{Technical approach high-level flow chart.}
+    \label{fig:Flow}
+\end{figure}
+
 
 \section{Deliverables}
 Project deliverables are listed as follows:
@@ -106,7 +114,7 @@ Project deliverables are listed as follows:
 
 \section{Timeline \& Milestones}
 Figure \ref{fig:timeline} shows the project timeline. \textcolor{blue}{Milestones} are labeled in blue, and deadlines for resolving \textcolor{red}{dependencies} are labeled in red. Other entries in the timeline indicate either start point or end point of tasks.
-\begin{figure}[!ht]
+\begin{figure}[H]
     \centering
     \begin{tikzpicture}
         \node[inner sep=0] (n-0) at (\scaleitemseparation,0) {};
@@ -138,8 +146,11 @@ Figure \ref{fig:timeline} shows the project timeline. \textcolor{blue}{Milestone
 \end{figure}
 
 \section{List of dependencies \& plan for resolving}
+\begin{figure}[H]
+    \includegraphics[width=\textwidth]{dependency.png}
+    \label{fig:dependency}
+\end{figure}
 
-\includegraphics[width=\textwidth]{dependency.png}
 
 \section{Management Plan}
 \begin{itemize}
@@ -148,6 +159,7 @@ Figure \ref{fig:timeline} shows the project timeline. \textcolor{blue}{Milestone
     \item All project relevent codes and documentation are managed with git.
     \item Project progress is monitored with Gantt Chart. 
 \end{itemize}
+\newpage
 \nocite{*}
 \bibliographystyle{unsrt}
 \bibliography{bibfile}
