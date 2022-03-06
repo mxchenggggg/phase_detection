@@ -25,6 +25,7 @@ function docker_run(){
             --device /dev/dri \
 		    --name ${docker_container_name} \
             --network host \
+            --ipc host\
             -v ${PWD}:/home/ubuntu/phase_detection \
             -v /home/wluo14/data:/home/ubuntu/data \
             -w /home/ubuntu/phase_detection  ${docker_image_name} bash
