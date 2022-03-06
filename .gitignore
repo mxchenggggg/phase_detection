@@ -9,3 +9,9 @@
 *.synctex.gz(busy)
 *.pdfsync
 *.pdf
+*.aux
+*.bbl
+*.blg
+*.fls
+*.log
+*.out
