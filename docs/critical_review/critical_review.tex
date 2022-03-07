@@ -7,13 +7,25 @@
 \usepackage{tikz}
 \usepackage{booktabs}
 \usepackage{float}
+\bibliographystyle{ieeetr}
 
 \renewcommand{\refname}{Reading List}
 
-\title{Surgical Phase Detection Using Deep Learning\\ Proposal \& Plan}
+\title{Surgical Phase Detection Using Deep Learning\\ Critical Review}
 \author{Xiaorui Zhang, Wenkai Luo, Xucheng Ma}
-\date{February 2022}
+\date{March 2022}
 
 \begin{document}
 \maketitle
+\section{Critical Review of SV-RCNet}
+\begin{itemize}
+    \item \textit{Background and problems with prior works:}\\
+    The automatic surgical video segmentation is a fundamental component in building a context-awareness computer-aided surgery system.  Before this work, several Vision-Based and Deep Learning oriented methods were proposed to extract spatial and temporal features and train a classifier to perform the segmentation task. However, there are three main drawbacks to the previous works.  First, the previously used visual features, either hand-crafted or shallow CNN-based, are still far from sufficient to represent the complicated visual characteristics of the frames in surgical videos. In addition, when exploiting the temporal information, most traditional methods rely on linear statistical models with pre-defined dependencies, which are incapable of precisely representing motions in the surgical videos, especially for frame series with strong non-linear dynamics. Second, and more importantly, most existing methods harness visual and temporal information separately, i.e., first using visual features with classifiers to predict each frame, and then using temporal dependencies to refine the results. In this way, visual features are unable to play a role in the temporal model and therefore such a scheme hardly benefits from the Spatio-Temporal information. Third, due to the above-mentioned two reasons, we analyze and find that it would be difficult for previous methods to sensitively identify and locate the transition frames while recognizing which is very important to achieve accurate and consistent workflow recognition results. \cite{SV-RCNet}
+    \item \textit{Significance of this paper:}\\
+    There are three main contributions from this paper. First, this paper proposed for the first time to use a deep neural network to extract visual features from the video frames. The ResNet makes it possible to optimize a much deeper network by embedding the identity transformation into the network through residual blocks. Using the ResNet as a spatial feature extractor, the SV-RCNet is able to find more discriminative features compared with models of shallow CNN. Second, instead of dealing with spatial and temporal features separately, SV-RCNet integrates ResNet and LSTM to form a novel recurrent convolutional architecture in order to take full advantage of the complementary information of visual and temporal features. LSTM is a direct improvement on the top of recurrent neural network (RNN), LSTM uses gates to generate “cell states” to aid the gradient flow and alleviate vanishing gradient. LSTM is designed to avoid long-term dependency problems and makes the training of long sequential data possible. SV-RCNet integrates the ResNet and the LSTM network, so that they are jointly trained in an end-to-end manner to generate high-level features that encode both spatial (visual) and temporal information. Particularly, the Spatio-temporal features learned by SV-RCNet are sensitive to motions in surgical videos and can precisely identify the phase transition frames. Third, considering that the results produced from SV-RCNet are transition-sensitive and the surgical videos are well-structured, another simple yet effective scheme called prior knowledge inference (PKI) is proposed to refine the SV-RCNet output. The PKI strategy is tailored to make use of the natural characteristics of surgical videos and can greatly improve recognition accuracy. 
+   \item \textit{Results and problems:}\\
+  SV-RCNet was the state-of-the-art model in surgical video segmentation in terms of performance in both Cholec80 and MICCAI M2CAI workflow Challenge. However, there are still drawbacks inherited in LSTMs, which retain the memory of a limited sequence, that cannot span minutes or hours, which is the average duration of surgery. Thus, the temporal information must be present in a slow, sequential way and prohibits inference parallelization, which would be beneficial for integration in an online OR scenario. 
+\end{itemize}
+
+\bibliography{bibfile}
 \end{document}
