@@ -9,14 +9,41 @@
 \usepackage{float}
 \bibliographystyle{ieeetr}
 
-\renewcommand{\refname}{Reading List}
-
 \title{Surgical Phase Detection Using Deep Learning\\ Critical Review}
 \author{Xiaorui Zhang, Wenkai Luo, Xucheng Ma}
 \date{March 2022}
 
 \begin{document}
 \maketitle
+\section{Project Problem Statement \& Background}
+Our project focuses on developing Deep Learning models which perform mastoidectomy video segmentation. The model \textbf{inputs} is a sequence of frames, and model \textbf{output} is a sequence of surgical phase labels. The main technical problems we need to solve is how to design an efficient and robust feature extractor for surgical videos, then we can perform classification in the feature space to obtain phase labels.
+
+\vspace{0.25cm}
+\noindent
+In general surgical phase segmentation workflow, both \textbf{spatial} features and \textbf{temporal} features are often considered, e.g.
+\begin{itemize}
+  \item Spatial Features: anatomical structures, tool presence/positioning ...
+  \item Temporal Features: anatomical changes, tool movement, camera view changes​ ...
+\end{itemize}
+Mastoidectomy videos has some characteristic features:
+\begin{itemize}
+  \item Anatomical features are mostly \textbf{rigid} since is a skull based surgery. 
+  \item Anatomical changes are mostly in depth direction as the overall surgery process is exposing the interior structures behind patient's ear.
+  \item Camera view changes might imply transition between surgical phases.
+  \item Tool positioning may contain more useful information about correct phase label than tool presence, because main tools involved are only drill and suction device and the are used across whole procedure.
+\end{itemize}
+
+\vspace{0.25cm}
+\noindent
+Typical DL methods for surgical phase segmentation has following components:
+\begin{itemize}
+  \item Spatial Feature Extractor
+  \item Temporal Feature Extractor
+  \item Spatial-Temporal Feature Fusion
+  \item Classifier in Feature Space
+\end{itemize}
+Papers which we included in this review are all consisted of components above, but different approaches were chosen for each component. For each paper, we first introduce the problem that the specific network design aimed to address, then summarize the main contributions, and discuss key results and potential problems.
+
 \section{Critical Review of SV-RCNet}
 \begin{itemize}
     \item \textit{Background and problems with prior works:}\\
