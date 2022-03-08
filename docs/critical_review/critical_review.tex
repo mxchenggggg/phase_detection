@@ -52,6 +52,37 @@ There are three main contributions from this paper. First, this paper proposed f
 \subsection{Results and problems}
 SV-RCNet was the state-of-the-art model in surgical video segmentation in terms of performance in both Cholec80 and MICCAI M2CAI workflow Challenge. However, there are still drawbacks inherited in LSTMs, which retain the memory of a limited sequence, that cannot span minutes or hours, which is the average duration of surgery. Thus, the temporal information must be present in a slow, sequential way and prohibits inference parallelization, which would be beneficial for integration in an online OR scenario.
 
+\section{Critical Review of TeCNO}
+\subsection{Problem to be addressed & Proposed methods}
+Once LSTM has been proven to be state-of-the-art in dealing with the temporal task, lots of research aims to adapt the LSTM model to the surgery workflow analysis. The promising results from LSTM-related models prove its capability on time-series data. Meanwhile, more experiments and analyses on the surgery phase segmentation indicated that the variability of patient anatomy and surgeon style are the bottleneck for more accurate segmentation. Recent research found that the long-range temporal dependencies are beneficial for compensating these challenges, while LSTM has been proved to be unable to capture the long-range temporal pattern. The weakness of LSTM  is the motivation why the author of Temporal Convolutional Network for the OPerating room (TeCNO) introduces a temporal convolution neural network instead of LSTM. 
+
+\begin{figure}[H]
+  \includegraphics[width=\textwidth]{TeCNO_arch.png}
+  \centering
+  \caption{ TeCNO architecture \cite{TeCNO}}
+  \label{fig:tecno_arch}
+\end{figure}
+
+In terms of the detailed architecture, TeCNO has a similar structure to the previous model except for the temporal feature extractor. TeCNO leverages transfer learning using a pre-trained ResNet50 model as a spatial feature extractor. Instead of using the LSTM model, a multi-stage temporal convolutional network(MS-TCN) is deployed. The extracted spatial features will then be fed into MS-TCN to detect the desired temporal pattern and refine the segmentation result. Each stage consists of multiple dilated temporal convolution layers. The essential part of dilated temporal convolution layers is the one-dimensional convolution against the time stamp, shown in the figure\ref{fig:tecno_arch}. The predictions are refined by stacking multiple stages together. The number of stages is one hyperparameter for this network. By ablation study, two stages are enough to produce accurate results. 
+
+\subsection{Significances and experiment results}
+There are three Significances of this model:
+\begin{enumerate}
+  \item \textbf{Receptive field}: Since dilated convolutions are implemented and multiple layers are stacked together, MS-TCN has a much larger receptive field than LSTM, compensating for the issue. 
+  \item \textbf{Segmentation refinement}: Compared with the original temporal convolution network, the author leverage the idea of the stacking stage for better segmentation refinement.
+  \item \textbf{Amount of parameter}: Compared with LSTM, MS-TCN has less amount of parameter. By using the dilated convolution layer, TeCNO can achieve slightly better performance with fewer parameters, which is more suitable for fast inference. 
+\end{enumerate}
+With these two significances, the TeCNO outperforms the state-of-the-art model, which can be seen in the evaluation table\ref{fig:tecno_res}. Meanwhile, the multi-stage structure also smooths the segmentation result by removing the ripples. As we can see on the bar chart\ref{fig:tecno_res}, TeCNO has a smoother result than the model using LSTM.
+
+\begin{figure}[H]
+  \includegraphics[scale = 0.8]{TeCNO_res.png}
+  \centering
+  \caption{ TeCNO evaluation result \cite{TeCNO}}
+  \label{fig:tecno_res}
+\end{figure}
+\subsection{Assessment and future work}
+As for the assessment of this paper, several pros and cons of TeCNO will be presented in this review report.This paper provides two perspectives, which might be beneficial for our project. The first one is introducing a temporal convolutional network into this task. TCN provides another potential to have better segmentation results instead of using Recurrent neural networks(RNN). The benefits brought from TCN include the larger receptive field and fewer parameters. This paper inspires us to find out if a better TCN model can address the problem we have in the mastoidectomy surgery dataset. The second one is how the author considers the temporal convolutional network. Some previous papers consider the TCN a spatial feature extractor, while TeCNO considers MS-TCN a prediction refinement mechanism. This assumption somehow brings a thought to our project: how can we utilize the spatial feature efficiently. There are two shortcomings of this paper where the author doesn't provide any experimental results to support his conclusion of the over-fitting issue, while it doesn't provide any comparison between using different TCN models.\\ 
+Based on this, we will work on this project to explore the potential of TCN in mastoidectomy surgery video and how we can utilize the spatial features efficiently to achieve online usage. 
 
 \section{Critical Review of Trans-SVNet}
 \subsection{Problem with previous work and proposed method}
