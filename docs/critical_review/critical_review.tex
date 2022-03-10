@@ -23,7 +23,7 @@ Our project focuses on developing Deep Learning models which perform mastoidecto
 In general surgical phase segmentation workflow, both \textbf{spatial} features and \textbf{temporal} features are often considered, e.g.
 \begin{itemize}
   \item Spatial Features: anatomical structures, tool presence/positioning ...
-  \item Temporal Features: anatomical changes, tool movement, camera view changes​ ...
+  \item Temporal Features: anatomical changes, tool movement, and camera view changes ...
 \end{itemize}
 Mastoidectomy videos has some characteristic features:
 \begin{itemize}
@@ -53,7 +53,7 @@ There are three main contributions from this paper. First, this paper proposed f
 SV-RCNet was the state-of-the-art model in surgical video segmentation in terms of performance in both Cholec80 and MICCAI M2CAI workflow Challenge. However, there are still drawbacks inherited in LSTMs, which retain the memory of a limited sequence, that cannot span minutes or hours, which is the average duration of surgery. Thus, the temporal information must be present in a slow, sequential way and prohibits inference parallelization, which would be beneficial for integration in an online OR scenario.
 
 \section{Critical Review of TeCNO}
-\subsection{Problem to be addressed & Proposed methods}
+\subsection{Problem to be addressed \& Proposed methods}
 Once LSTM has been proven to be state-of-the-art in dealing with the temporal task, lots of research aims to adapt the LSTM model to the surgery workflow analysis. The promising results from LSTM-related models prove its capability on time-series data. Meanwhile, more experiments and analyses on the surgery phase segmentation indicated that the variability of patient anatomy and surgeon style are the bottleneck for more accurate segmentation. Recent research found that the long-range temporal dependencies are beneficial for compensating these challenges, while LSTM has been proved to be unable to capture the long-range temporal pattern. The weakness of LSTM  is the motivation why the author of Temporal Convolutional Network for the OPerating room (TeCNO) introduces a temporal convolution neural network instead of LSTM. 
 
 \begin{figure}[H]
