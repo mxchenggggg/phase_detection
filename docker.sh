@@ -28,6 +28,7 @@ function docker_run(){
             --ipc host\
             -v ${PWD}:/home/ubuntu/phase_detection \
             -v /home/wluo14/data:/home/ubuntu/data \
+            -v /home/wluo14/TeCNO:/home/ubuntu/TeCNO \
             -w /home/ubuntu/phase_detection  ${docker_image_name} bash
     elif [ $count -eq 1 ];then
         echo "docker: ${docker_container_name} exists, restart it"
