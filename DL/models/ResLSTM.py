@@ -6,7 +6,7 @@ from torchvision import models, transforms
 class ResLSTM(nn.Module):
     def __init__(self, hparams):
         self.num_classes = hparams.out_features  # 7 in cholec, 3 in Masto
-        self.sequence_length = 4
+        self.sequence_length = hparams.sequence_length 
         super(resnet_lstm, self).__init__()
         resnet = models.resnet50(pretrained=True)
         # Create the shared model (ResNet50)

@@ -29,6 +29,7 @@ function docker_run(){
             -v ${PWD}:/home/ubuntu/phase_detection \
             -v /home/wluo14/data:/home/ubuntu/data \
             -v /home/wluo14/TeCNO:/home/ubuntu/TeCNO \
+	    -v /home/wluo14/SVRC:/home/ubuntu/SVRC \
             -w /home/ubuntu/phase_detection  ${docker_image_name} bash
     elif [ $count -eq 1 ];then
         echo "docker: ${docker_container_name} exists, restart it"

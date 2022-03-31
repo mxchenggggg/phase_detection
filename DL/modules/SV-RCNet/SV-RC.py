@@ -1,208 +1,229 @@
 import logging
 import torch
 from torch import optim
-from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import DataLoader
-from pytorch_lightning.metrics.utils import _input_format_classification
+import pytorch_lightning as pl
 from pytorch_lightning.core.lightning import LightningModule
-from utils.metric_helper import AccuracyStages, RecallOverClasse, PrecisionOverClasses
 from torch import nn
+from pycm import ConfusionMatrix
 import numpy as np
+import pickle
+import os
+import torchmetrics
 
 
-class SV_RCNet(LightningModule):
+class FeatureExtraction(LightningModule):
     def __init__(self, hparams, model, dataset):
-        super(SV_RCNet, self).__init__()
-        self.hparams = hparams
+        super(FeatureExtraction, self).__init__()
+        
+        self.hparams_set = hparams
         self.batch_size = hparams.batch_size
         self.dataset = dataset
-        self.model = model
-        self.weights_train = np.asarray(self.dataset.weights["train"])
-        self.ce_loss = nn.CrossEntropyLoss(weight=torch.from_numpy(self.weights_train).float())
+        # output stem 0, output phase 1 , output phase and tool 2
+        #self.num_tasks = self.hparams.num_tasks
+        self.log_vars = nn.Parameter(torch.zeros(2))
+        #self.bce_loss = nn.BCEWithLogitsLoss()
+        self.ce_loss = nn.CrossEntropyLoss(
+            weight=torch.from_numpy(self.dataset.class_weights).float())
+        self.sig_f = nn.Sigmoid()
+        self.current_video_idx = self.dataset.df["test"].video_idx.min()
         self.init_metrics()
 
-    def init_metrics(self):
-        self.train_acc_stages = AccuracyStages(num_stages=self.hparams.mstcn_stages)
-        self.val_acc_stages = AccuracyStages(num_stages=self.hparams.mstcn_stages)
-        self.max_acc_last_stage = {"epoch": 0, "acc": 0}
-        self.max_acc_global = {"epoch": 0, "acc": 0 , "stage": 0, "last_stage_max_acc_is_global": False}
+        # store model
+        self.current_stems = []
+        self.current_phase_labels = []
+        self.current_p_phases = []
+        self.len_test_data = len(self.dataset.data["test"])
+        self.model = model
+        self.best_metrics_high = {"val_acc_phase": 0}
+        self.test_acc_per_video = {}
+        self.pickle_path = None
 
-        self.precision_metric = PrecisionOverClasses(num_classes=7)
-        self.recall_metric = RecallOverClasse(num_classes=7)
-        #self.cm_metric = ConfusionMatrix(num_classes=10)
+    def init_metrics(self):
+        self.train_acc_phase = torchmetrics.Accuracy()
+        self.val_acc_phase = torchmetrics.Accuracy()
+        self.test_acc_phase = torchmetrics.Accuracy()
+
+    def set_export_pickle_path(self):
+        self.pickle_path = os.path.join(
+            self.hparams_set.output_path, "mastoid_pickle_export")
+        os.makedirs(self.pickle_path, exist_ok=True)
+        print(f"setting export_pickle_path: {self.pickle_path}")
+
+    # ---------------------
+    # TRAINING
+    # ---------------------
 
     def forward(self, x):
-        video_fe = x.transpose(2, 1)
-        y_classes = self.model.forward(video_fe)
-        y_classes = torch.softmax(y_classes, dim=2)
-        return y_classes
+        stem, phase = self.model.forward(x)
+        return stem, phase
 
-    def loss_function(self, y_classes, labels):
-        stages = y_classes.shape[0]
-        clc_loss = 0
-        for j in range(stages):  ### make the interuption free stronge the more layers.
-            p_classes = y_classes[j].squeeze().transpose(1, 0)
-            ce_loss = self.ce_loss(p_classes, labels.squeeze())
-            clc_loss += ce_loss
-        clc_loss = clc_loss / (stages * 1.0)
-        return clc_loss
-
-    def get_class_acc(self, y_true, y_classes):
-        y_true = y_true.squeeze()
-        y_classes = y_classes.squeeze()
-        y_classes = torch.argmax(y_classes, dim=0)
-        acc_classes = torch.sum(
-            y_true == y_classes).float() / (y_true.shape[0] * 1.0)
-        return acc_classes
-
-    def get_class_acc_each_layer(self, y_true, y_classes):
-        y_true = y_true.squeeze()
-        accs_classes = []
-        for i in range(y_classes.shape[0]):
-            acc_classes = self.get_class_acc(y_true, y_classes[i, 0])
-            accs_classes.append(acc_classes)
-        return accs_classes
-
-
-    '''def log_precision_and_recall(self, precision, recall, step):
-        for n,p in enumerate(precision):
-            if not p.isnan():
-                self.log(f"{step}_precision_{self.dataset.class_labels[n]}",p ,on_step=True, on_epoch=True)
-        for n,p in enumerate(recall):
-            if not p.isnan():
-                self.log(f"{step}_recall_{self.dataset.class_labels[n]}",p ,on_step=True, on_epoch=True)'''
-
-    def calc_precision_and_recall(self, y_pred, y_true, step="val"):
-        y_max_pred, y_true = _input_format_classification(y_pred[-1], y_true, threshold=0.5)
-        precision = self.precision_metric(y_max_pred, y_true)
-        recall = self.recall_metric(y_max_pred, y_true)
-        #if step == "val":
-        #    self.log_precision_and_recall(precision, recall, step=step)
-        return precision, recall
-
-    def log_average_precision_recall(self, outputs, step="val"):
-        precision_list = [o["precision"] for o in outputs]
-        recall_list = [o["recall"] for o in outputs]
-        x = torch.stack(precision_list)
-        y = torch.stack(recall_list)
-        phase_avg_precision = [torch.mean(x[~x[:, n].isnan(), n]) for n in range(x.shape[1])]
-        phase_avg_recall = [torch.mean(y[~y[:, n].isnan(), n]) for n in range(x.shape[1])]
-        phase_avg_precision = torch.stack(phase_avg_precision)
-        phase_avg_recall = torch.stack(phase_avg_recall)
-        phase_avg_precision_over_video = phase_avg_precision[~phase_avg_precision.isnan()].mean()
-        phase_avg_recall_over_video = phase_avg_recall[~phase_avg_recall.isnan()].mean()
-        self.log(f"{step}_avg_precision", phase_avg_precision_over_video, on_epoch=True, on_step=False)
-        self.log(f"{step}_avg_recall", phase_avg_recall_over_video, on_epoch=True, on_step=False)
+    def loss_phase_tool(self, p_phase, labels_phase):
+        loss_phase = self.ce_loss(p_phase, labels_phase)
+        return loss_phase
 
     def training_step(self, batch, batch_idx):
-        stem, y_hat, y_true = batch
-        y_pred = self.forward(stem)
-        loss = self.loss_function(y_pred, y_true)
-        self.log("loss", loss, on_epoch=True, on_step=True, prog_bar=True)
-        precision, recall = self.calc_precision_and_recall(y_pred, y_true, step="train")
-        acc_stages=self.train_acc_stages(y_pred, y_true)
-        acc_stages_dict = {f"train_S{s+1}_acc":acc_stages[s] for s in range(len(acc_stages))}
-        acc_stages_dict["train_acc"] = acc_stages_dict.pop(f"train_S{len(acc_stages)}_acc") # Renaming metric of last Stage
-        self.log_dict(acc_stages_dict, on_epoch=True, on_step=False)
-        return {"loss":loss, "precision": precision, "recall": recall}
-
-
-    def training_epoch_end(self, outputs):
-        self.log_average_precision_recall(outputs, step="train")
-
+        x, y_phase, _ = batch
+        _, p_phase = self.forward(x)
+        loss = self.ce_loss(p_phase, y_phase)
+        self.train_acc_phase(p_phase, y_phase)
+        self.log("train_acc_phase", self.train_acc_phase,
+                 on_epoch=True, on_step=True)
+        self.log("loss", loss, prog_bar=True,
+                 logger=True, on_epoch=True, on_step=True)
+        return loss
 
     def validation_step(self, batch, batch_idx):
-        stem, y_hat, y_true = batch
-        y_pred = self.forward(stem)
-        val_loss = self.loss_function(y_pred, y_true)
-        self.log("val_loss", val_loss, on_epoch=True, prog_bar=True, on_step=False)
-        precision, recall = self.calc_precision_and_recall(y_pred, y_true, step="val")
-        self.val_acc_stages(y_pred, y_true)
-        acc_stages = self.val_acc_stages.compute()
-        metric_dict = {f"val_S{s + 1}_acc": acc_stages[s] for s in range(len(acc_stages))}
-        metric_dict["val_acc"] = metric_dict.pop(f"val_S{len(acc_stages)}_acc") # Renaming metric of last Stage
-        self.log_dict(metric_dict, on_epoch=True, on_step=False)
-        metric_dict["precision"] = precision
-        metric_dict["recall"] = recall
-        return metric_dict
+        x, y_phase, _ = batch
+        _, p_phase = self.forward(x)
+        loss = self.ce_loss(p_phase, y_phase)
+        self.val_acc_phase(p_phase, y_phase)
+        self.log("val_acc_phase", self.val_acc_phase,
+                 on_epoch=True, on_step=False)
+        self.log("val_loss", loss, prog_bar=True,
+                 logger=True, on_epoch=True, on_step=False)
 
+    def get_phase_acc(self, true_label, pred):
+        pred = torch.FloatTensor(pred)
+        pred_phase = torch.softmax(pred, dim=1)
+        labels_pred = torch.argmax(pred_phase, dim=1).cpu().numpy()
+        cm = ConfusionMatrix(
+            actual_vector=true_label,
+            predict_vector=labels_pred,
+        )
+        return cm.Overall_ACC, cm.PPV, cm.TPR, cm.classes, cm.F1_Macro
 
-    def validation_epoch_end(self, outputs):
-        """
-        Called at the end of validation to aggregate outputs
-        :param outputs: list of individual outputs of each validation step
-        :return:
-        self.max_acc_last_stage = {"epoch": 0, "acc": 0}
-        self.max_acc_global = {"epoch": 0, "acc": 0 , "stage": 0}
-        """
-        val_acc_stage_last_epoch = torch.stack([o["val_acc"] for o in outputs]).mean()
+    def save_to_drive(self, vid_index):
+        acc, ppv, tpr, keys, f1 = self.get_phase_acc(self.current_phase_labels,
+                                                     self.current_p_phases)
+        save_path = os.path.join(
+            self.pickle_path, f"{self.hparams_set.fps_sampling_test}fps")
+        os.makedirs(save_path, exist_ok=True)
+        save_path_txt = os.path.join(save_path,
+                                     f"video_{vid_index}_{self.hparams_set.fps_sampling_test}fps_acc.txt")
+        save_path_vid = os.path.join(save_path,
+                                     f"video_{vid_index}_{self.hparams_set.fps_sampling_test}fps.pkl")
 
-        if val_acc_stage_last_epoch > self.max_acc_last_stage["acc"]:
-            self.max_acc_last_stage["acc"] = val_acc_stage_last_epoch
-            self.max_acc_last_stage["epoch"] = self.current_epoch
-
-        self.log("val: max acc last Stage", self.max_acc_last_stage["acc"])
-        self.log_average_precision_recall(outputs, step="val")
-
-
-
+        with open(save_path_txt, "w") as f:
+            f.write(
+                f"vid: {vid_index}; acc: {acc}; ppv: {ppv}; tpr: {tpr}; keys: {keys}; f1: {f1}"
+            )
+            self.test_acc_per_video[vid_index] = acc
+            print(
+                f"save video {vid_index} | acc: {acc:.4f} | f1: {f1}"
+            )
+        with open(save_path_vid, 'wb') as f:
+            pickle.dump([
+                np.asarray(self.current_stems),
+                np.asarray(self.current_p_phases),
+                np.asarray(self.current_phase_labels)
+            ], f)
 
     def test_step(self, batch, batch_idx):
-        stem, y_hat, y_true = batch
-        y_pred = self.forward(stem)
-        val_loss = self.loss_function(y_pred, y_true)
-        self.log("val_loss", val_loss, on_epoch=True, prog_bar=True, on_step=False)
-        precision, recall = self.calc_precision_and_recall(y_pred, y_true, step="test")
-        self.val_acc_stages(y_pred, y_true)
-        acc_stages = self.val_acc_stages.compute()
-        metric_dict = {f"test_S{s + 1}_acc": acc_stages[s] for s in range(len(acc_stages))}
-        metric_dict["test_acc"] = metric_dict.pop(f"test_S{len(acc_stages)}_acc") # Renaming metric of last Stage
-        self.log_dict(metric_dict, on_epoch=True, on_step=False)
-        metric_dict["precision"] = precision
-        metric_dict["recall"] = recall
-        return metric_dict
 
+        x, y_phase, (vid_idx, img_name, img_index) = batch
+        vid_idx_raw = vid_idx.cpu().numpy()
+        with torch.no_grad():
+            stem, y_hat = self.forward(x)
+        self.test_acc_phase(y_hat, y_phase)
+        #self.log("test_acc_phase", self.test_acc_phase, on_epoch=True, on_step=True)
+        vid_idxs, indexes = np.unique(vid_idx_raw, return_index=True)
+        vid_idxs = [int(x) for x in vid_idxs]
+        index_next = len(vid_idx) if len(vid_idxs) == 1 else indexes[1]
+        for i in range(len(vid_idxs)):
+            vid_idx = vid_idxs[i]
+            index = indexes[i]
+            if vid_idx != self.current_video_idx:
+                self.save_to_drive(self.current_video_idx)
+                self.current_stems = []
+                self.current_phase_labels = []
+                self.current_p_phases = []
+                if len(vid_idxs) <= i + 1:
+                    index_next = len(vid_idx_raw)
+                else:
+                    # for the unlikely case that we have 3 phases in one batch
+                    index_next = indexes[i+1]
+                self.current_video_idx = vid_idx
+            y_hat_numpy = np.asarray(y_hat.cpu()).squeeze()
+            self.current_p_phases.extend(
+                np.asarray(y_hat_numpy[index:index_next, :]).tolist())
+            self.current_stems.extend(
+                stem[index:index_next, :].cpu().detach().numpy().tolist())
+            y_phase_numpy = y_phase.cpu().numpy()
+            self.current_phase_labels.extend(
+                np.asarray(y_phase_numpy[index:index_next]).tolist())
+
+        if (batch_idx + 1) * self.hparams_set.batch_size >= self.len_test_data:
+            self.save_to_drive(vid_idx)
+            print(f"Finished extracting all videos...")
 
     def test_epoch_end(self, outputs):
-        test_acc = torch.stack([o["test_acc"] for o in outputs]).mean()
-        self.log("test_acc", test_acc)
-        self.log_average_precision_recall(outputs, step="test")
-
-
+        self.log("test_acc_train", np.mean(np.asarray([self.test_acc_per_video[x]for x in
+                                                       self.dataset.vids_for_training])))
+        self.log("test_acc_val", np.mean(np.asarray([self.test_acc_per_video[x]for x in
+                                                     self.dataset.vids_for_val])))
+        self.log("test_acc_test", np.mean(np.asarray([self.test_acc_per_video[x] for x in
+                                                      self.dataset.vids_for_test])))
+        self.log("test_acc", float(self.test_acc_phase.compute()))
+    # ---------------------
+    # TRAINING SETUP
+    # ---------------------
 
     def configure_optimizers(self):
+        """
+        return whatever optimizers we want here
+        :return: list of optimizers
+        """
         optimizer = optim.Adam(self.parameters(),
-                               lr=self.hparams.learning_rate)
-        return [optimizer]  #, [scheduler]
+                               lr=self.hparams_set.learning_rate)
+        #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+        return [optimizer]  # , [scheduler]
 
     def __dataloader(self, split=None):
         dataset = self.dataset.data[split]
-        should_shuffle = False
-        if split == "train":
-            should_shuffle = True
-        # when using multi-node (ddp) we need to add the  datasampler
-        train_sampler = None
-        if self.use_ddp:
-            train_sampler = DistributedSampler(dataset)
+        if self.hparams_set.batch_size > self.hparams_set.model_specific_batch_size_max:
+            print(
+                f"The choosen batchsize is too large for this model."
+                f" It got automatically reduced from: {self.hparams_set.batch_size} to {self.hparams_set.model_specific_batch_size_max}"
+            )
+            self.hparams_set.batch_size = self.hparams_set.model_specific_batch_size_max
+
+        if split == "val" or split == "test":
             should_shuffle = False
+        else:
+            should_shuffle = True
         print(f"split: {split} - shuffle: {should_shuffle}")
+        worker = self.hparams_set.num_workers
+        if split == "test":
+            print(
+                "worker set to 0 due to test"
+            )  # otherwise for extraction the order in which data is loaded is not sorted e.g. 1,2,3,4, --> 1,5,3,2
+            worker = 0
+
         loader = DataLoader(
             dataset=dataset,
-            batch_size=self.hparams.batch_size,
+            batch_size=self.hparams_set.batch_size,
             shuffle=should_shuffle,
-            sampler=train_sampler,
-            num_workers=self.hparams.num_workers,
+            num_workers=worker,
             pin_memory=True,
         )
         return loader
 
     def train_dataloader(self):
+        """
+        Intialize train dataloader
+        :return: train loader
+        """
         dataloader = self.__dataloader(split="train")
         logging.info("training data loader called - size: {}".format(
             len(dataloader.dataset)))
         return dataloader
 
     def val_dataloader(self):
+        """
+        Initialize val loader
+        :return: validation loader
+        """
         dataloader = self.__dataloader(split="val")
         logging.info("validation data loader called - size: {}".format(
             len(dataloader.dataset)))
@@ -212,18 +233,23 @@ class SV_RCNet(LightningModule):
         dataloader = self.__dataloader(split="test")
         logging.info("test data loader called  - size: {}".format(
             len(dataloader.dataset)))
+        print(f"starting video idx for testing: {self.current_video_idx}")
+        self.set_export_pickle_path()
         return dataloader
 
     @staticmethod
     def add_module_specific_args(parser):  # pragma: no cover
-        regressiontcn = parser.add_argument_group(
-            title='regression tcn specific args options')
-        regressiontcn.add_argument("--learning_rate",
-                                   default=0.001,
-                                   type=float)
-        regressiontcn.add_argument("--optimizer_name",
-                                   default="adam",
-                                   type=str)
-        regressiontcn.add_argument("--batch_size", default=1, type=int)
-
+        cholec_fe_module = parser.add_argument_group(
+            title='cholec_fe_module specific args options')
+        cholec_fe_module.add_argument("--learning_rate",
+                                      default=0.001,
+                                      type=float)
+        cholec_fe_module.add_argument("--num_tasks",
+                                      default=1,
+                                      type=int,
+                                      choices=[1, 2])
+        cholec_fe_module.add_argument("--optimizer_name",
+                                      default="adam",
+                                      type=str)
+        cholec_fe_module.add_argument("--batch_size", default=32, type=int)
         return parser
