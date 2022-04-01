@@ -8,9 +8,23 @@ from typing import Optional
 
 
 class MastoidDataModule(LightningDataModule):
+    """ Pytorch Lightning Data Module for Mastoidectomy 
+        Surgical Phase Segmentation Dataset 
+    """
+
     def __init__(
             self, hparams, DatasetClass, transform: Optional[Compose] = None,
             video_idx_col: Optional[str] = "video_idx") -> None:
+        """ MastoidDataModule constructor
+
+        Args:
+            hparams (_type_): hyperparameters and setting read from config file
+            DatasetClass (_type_): Dataset class
+            transform (Optional[Compose], optional): Data transfrom. Defaults to None.
+            video_idx_col (Optional[str], optional): video index column name in dataset metadata csv file. 
+                                                     Defaults to "video_idx".
+        """
+
         super().__init__()
         self.hprms = hparams
 
@@ -40,6 +54,8 @@ class MastoidDataModule(LightningDataModule):
         self.metadata = {}
 
     def prepare_data(self) -> None:
+        """ Load and split dataset metadata
+        """
         # read metadata for all videos
         self.metadata["all"] = pd.read_csv(Path.joinpath(
             self.data_root, self.dataset_metadata_file_path))
@@ -52,6 +68,8 @@ class MastoidDataModule(LightningDataModule):
             self.metadata[split] = self.__split_metadata_donwsampled(split)
 
     def setup(self) -> None:
+        """ Set up datasets for traning, validation and testing
+        """
         # TODO: pass parameters read from config file to MastoidTrasform
         self.datasets = {}
         for split in ["train", "val", "test"]:
@@ -76,6 +94,14 @@ class MastoidDataModule(LightningDataModule):
             num_workers=self.hprms.worker)
 
     def __split_metadata_donwsampled(self, split: str) -> pd.DataFrame:
+        """ Split metadata for all videos for training, validation and testing
+
+        Args:
+            split (str): name of the split(train/val/test)
+
+        Returns:
+            pd.DataFrame: metadata Dataframe for the split
+        """
         indexes = self.metadata[self.video_idx_col].isin(
             self.vid_idxes[split])
         df = self.metadata[indexes]

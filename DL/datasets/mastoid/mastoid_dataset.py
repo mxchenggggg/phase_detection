@@ -44,13 +44,13 @@ class MastoidDatasetBase(Dataset):
 
         self.transform = transform
 
+        # column names in df
         self.label_col = label_col
         self.path_col = path_col
         self.video_idx_col = video_idx_col
 
         # Row indexes of df s.t. the subsequence of seq_length starting from
         #   the row at the index are from the same video
-
         self.valid_seq_start_indexes = []
         if seq_length > 1:
             for v_index in video_indexes:
@@ -72,7 +72,18 @@ class MastoidDatasetBase(Dataset):
                 self.video_lengths.append(len(row_indexes))
                 self.valid_seq_start_indexes.append(row_indexes[0])
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Any:
+        """get data point at givin index. Derived class must implement this method
+
+        Args:
+            index (int): _description_
+
+        Raises:
+            NotImplementedError: not implemented
+
+        Returns:
+            Any: data point
+        """
         raise NotImplementedError
 
     def __len__(self) -> int:

@@ -39,27 +39,21 @@ class MastoidTrasform:
         input_width = 224
         self.resize = Resize(height=input_height, width=input_width)
 
-    def train_transform(self) -> Compose:
-        """ Get data transform for training
-
-        Returns:
-            Compose: transform
-        """
-        return Compose(
+        # transforms for trainig, validation and testing
+        self.transforms = {}
+        self.transforms["train"] = Compose(
             [self.resize, self.train_aug, self.normalize, ToTensorV2()])
+        self.transforms["val"] = Compose(
+            [self.resize, self.normalize, ToTensorV2()])
+        self.transforms["test"] = self.transforms["val"]
 
-    def val_transform(self) -> Compose:
-        """ Get data transform for validation
+    def get_transform(self, split: str) -> Compose:
+        """_summary_
 
-        Returns:
-            Compose: transform
-        """
-        return Compose([self.resize, self.normalize, ToTensorV2()])
-
-    def test_transform(self) -> Compose:
-        """ Get data transform for testing
+        Args:
+            split (str): name of the split(train/val/test)
 
         Returns:
-            Compose: transform
+            Compose: transform for the split
         """
-        return self.val_transform()
+        return self.transforms[split]
