@@ -1,9 +1,11 @@
 import pandas as pd
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 from PIL import Image
 from albumentations import Compose
 from typing import Tuple, List, Any, Optional
+import configargparse
 
 
 class MastoidDatasetBase(Dataset):
@@ -14,7 +16,7 @@ class MastoidDatasetBase(Dataset):
     def __init__(self, df: pd.DataFrame, seq_length: int,
                  video_indexes: List[int],
                  transform: Optional[Compose] = None,
-                 label_col: Optional[str] = "classs",
+                 label_col: Optional[str] = "class",
                  path_col: Optional[str] = "path",
                  video_idx_col: Optional[str] = "video_idx") -> None:
         """ MastoidDatasetBase Constroctor  
@@ -94,25 +96,32 @@ class MastoidDatasetBase(Dataset):
         """
         return len(self.valid_seq_start_indexes)
 
+    @staticmethod
+    def add_dataset_specific_args(parser: configargparse.ArgParser):
+        mastoid_datset_args = parser.add_argument_group(
+            title='mastoid_datset specific args options')
+        return parser
+
 
 class MastoidPerFrameRawImgDataset(MastoidDatasetBase):
     """ Per-frame raw image datset
     """
 
-    def __init__(
-            self, df: pd.DataFrame, video_indexes: List[int],
-            transform: Compose) -> None:
-        """ MastoidPerFrameRawImgDataset
+    # def __init__(
+    #         self, df: pd.DataFrame, seq_length: int, video_indexes: List[int],
+    #         transform: Compose) -> None:
+    #     """ MastoidPerFrameRawImgDataset constructor
 
-        Args:
-            df (pd.DataFrame):  DataFrame containing metadata for all videos.
-            video_indexes (List[int]): list of video indexes.
-            transform (Compose): image data transform
-        """
-        # seq_length = 1 for per-frame data
-        super().__init__(df, 1, video_indexes, transform=transform)
+    #     Args:
+    #         df (pd.DataFrame):  DataFrame containing metadata for all videos.
+    #         video_indexes (List[int]): list of video indexes.
+    #         transform (Compose): image data transform
+    #     """
 
-    def load_img(self, index: int) -> Any:
+    #     # seq_length = 1 for per-frame data
+    #     super().__init__(df, 1, video_indexes, transform=transform)
+
+    def load_img(self, index: int) -> torch.tensor:
         """ Load raw image at given index
 
         Args:
@@ -123,10 +132,14 @@ class MastoidPerFrameRawImgDataset(MastoidDatasetBase):
         """
         img_index = self.valid_seq_start_indexes[index]
         img_path = self.df.loc[img_index, self.path_col]
-        img = Image.open(img_path)
+        img = np.array(Image.open(img_path))
         if self.transform:
             img = self.transform(image=img)["image"]
         return img.type(torch.FloatTensor)
+
+    def load_label(self, index: int) -> torch.tensor:
+        return torch.tensor(
+            int(self.df.iloc[index, self.df.columns.get_loc(self.label_col)]))
 
     def __getitem__(self, index):
         return self.load_img(index), self.load_label(index)

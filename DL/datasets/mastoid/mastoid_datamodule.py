@@ -1,10 +1,11 @@
 from torch.utils.data import DataLoader
 from pytorch_lightning import LightningDataModule
-from mastoid_transform import MastoidTrasform
+from datasets.mastoid.mastoid_transform import MastoidTrasform
 import pandas as pd
 from pathlib import Path
 from albumentations import Compose
 from typing import Optional
+import configargparse
 
 
 class MastoidDataModule(LightningDataModule):
@@ -14,6 +15,7 @@ class MastoidDataModule(LightningDataModule):
 
     def __init__(
             self, hparams, DatasetClass, transform: Optional[Compose] = None,
+            label_col: Optional[str] = "class", path_col: Optional[str] = "path",
             video_idx_col: Optional[str] = "video_idx") -> None:
         """ MastoidDataModule constructor
 
@@ -21,6 +23,8 @@ class MastoidDataModule(LightningDataModule):
             hparams (_type_): hyperparameters and setting read from config file
             DatasetClass (_type_): Dataset class
             transform (Optional[Compose], optional): Data transfrom. Defaults to None.
+            label_col (Optional[str], optional): label column name in df. Defaults to "class".
+            path_col (Optional[str], optional): data file column name in df. Defaults to "path".
             video_idx_col (Optional[str], optional): video index column name in dataset metadata csv file. 
                                                      Defaults to "video_idx".
         """
@@ -47,6 +51,9 @@ class MastoidDataModule(LightningDataModule):
         self.vid_idxes["train"] = [1, 3, 4, 5, 6, 7]
         self.vid_idxes["val"] = [8, 9, 10]
         self.vid_idxes["test"] = [12, 13, 14]
+
+        self.label_col = label_col
+        self.path_col = path_col
         self.video_idx_col = video_idx_col
 
         self.transform = transform
@@ -57,17 +64,19 @@ class MastoidDataModule(LightningDataModule):
         """ Load and split dataset metadata
         """
         # read metadata for all videos
-        self.metadata["all"] = pd.read_csv(Path.joinpath(
-            self.data_root, self.dataset_metadata_file_path))
-        assert self.metadata["all"].isnull().values.any(
-        ), "Dataframe contains nan Elements"
+        metafile_path = Path.joinpath(
+            self.data_root, self.dataset_metadata_file_path)
+        self.metadata["all"] = pd.read_pickle(metafile_path)
+
+        # assert self.metadata["all"].isnull().values.any(
+        # ), "Dataframe contains nan Elements"
         self.metadata["all"] = self.metadata["all"].reset_index()
 
         # split and downsample metadata
         for split in ["train", "val", "test"]:
             self.metadata[split] = self.__split_metadata_donwsampled(split)
 
-    def setup(self) -> None:
+    def setup(self, stage: Optional[str] = None) -> None:
         """ Set up datasets for traning, validation and testing
         """
         # TODO: pass parameters read from config file to MastoidTrasform
@@ -76,10 +85,11 @@ class MastoidDataModule(LightningDataModule):
             self.datasets[split] = self.DatasetClass(
                 self.metadata[split],
                 self.seq_len, self.vid_idxes[split],
-                transform=self.transform)
+                transform=self.transform, label_col=self.label_col,
+                path_col=self.path_col, video_idx_col=self.video_idx_col)
 
     def train_dataloader(self) -> DataLoader:
-        return self.__get_dataloader("traning")
+        return self.__get_dataloader("train")
 
     def val_dataloader(self) -> DataLoader:
         return self.__get_dataloader("val")
@@ -88,10 +98,13 @@ class MastoidDataModule(LightningDataModule):
         return self.__get_dataloader("test")
 
     def __get_dataloader(self, split: str) -> DataLoader:
+        shuffle = False
+        if split == "train":
+            shuffle = True
         return DataLoader(
             dataset=self.datasets[split],
-            batch_size=self.hprms.batch_size, shuffle=True,
-            num_workers=self.hprms.worker)
+            batch_size=self.hprms.batch_size, shuffle=shuffle,
+            num_workers=self.hprms.num_workers)
 
     def __split_metadata_donwsampled(self, split: str) -> pd.DataFrame:
         """ Split metadata for all videos for training, validation and testing
@@ -102,11 +115,17 @@ class MastoidDataModule(LightningDataModule):
         Returns:
             pd.DataFrame: metadata Dataframe for the split
         """
-        indexes = self.metadata[self.video_idx_col].isin(
+        indexes = self.metadata["all"][self.video_idx_col].isin(
             self.vid_idxes[split])
-        df = self.metadata[indexes]
+        df = self.metadata["all"][indexes]
         # TODO: magic number 30
         if 0 < self.downsampled_fps[split] < 30:
             factor = int(30 / self.downsampled_fps[split])
             df = df.iloc[::factor]
         return df
+
+    @staticmethod
+    def add_datamodule_specific_args(parser: configargparse.ArgParser):
+        mastoid_datamodule = parser.add_argument_group(
+            title='mastoid_datamodule specific args options')
+        return parser

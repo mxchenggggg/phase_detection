@@ -21,11 +21,11 @@ class MastoidTrasform:
         self.normalize = Normalize(mean=norm_mean, std=norm_std)
 
         # Training augmentation
-        shift_limit = 0.1,
-        scale_limit = (-0.2, 0.5),
-        rotate_limit = 15,
-        border_mode = 0,
-        value = 0,
+        shift_limit = 0.1
+        scale_limit = (-0.2, 0.5)
+        rotate_limit = 15
+        border_mode = 0
+        value = 0
         p = 0.7
         self.train_aug = ShiftScaleRotate(shift_limit=shift_limit,
                                           scale_limit=scale_limit,

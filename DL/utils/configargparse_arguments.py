@@ -1,7 +1,7 @@
 import configargparse
 
 
-def build_configargparser(parser):
+def build_configargparser(parser: configargparse.ArgParser):
     model_group = parser.add_argument_group(title='Model options')
     dataset_group = parser.add_argument_group(title='Dataset options')
     module_group = parser.add_argument_group(title='Module options')
@@ -40,6 +40,7 @@ def build_configargparser(parser):
                                required=True,
                                type=str)
     dataset_group.add_argument("--dataset", type=str, required=True)
+    dataset_group.add_argument("--datamodule", type=str, required=True)
     dataset_group.add_argument("--out_features", type=int, required=True)
     dataset_group.add_argument("--train_percent_check",
                                type=float,
@@ -47,6 +48,13 @@ def build_configargparser(parser):
     dataset_group.add_argument("--val_percent_check", default=1.0, type=float)
     dataset_group.add_argument("--test_percent_check", default=1.0, type=float)
     dataset_group.add_argument("--overfit_pct", default=0.0, type=float)
+
+    # downsampleing data
+    dataset_group.add_argument("--fps_sampling", default=1.0, type=float)
+    dataset_group.add_argument("--fps_sampling_test", default=30.0, type=float)
+
+    dataset_group.add_argument("--sequence_length", default=1, type=int)
+    
 
     # config trainer
     trainer_group.add_argument("--log_interval", type=int, default=100)
@@ -60,6 +68,9 @@ def build_configargparser(parser):
     # max and min epoch
     trainer_group.add_argument("--max_epochs", default=1000, type=int)
     trainer_group.add_argument("--min_epochs", default=1, type=int)
+
+    trainer_group.add_argument("--batch_size", default=1, type=int)
+    trainer_group.add_argument("--learning_rate", default=0.0005, type=float)
 
     # check logging frequency
     trainer_group.add_argument("--check_val_every_n_epoch",

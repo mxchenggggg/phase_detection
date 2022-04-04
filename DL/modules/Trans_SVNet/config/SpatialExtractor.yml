@@ -1,0 +1,17 @@
+module : Trans_SVNet.SpatialExtractor.TransSVNetSpatialExtractor
+model : Trans_SVNet.ResNet50.ResNet50TransSV
+data_root : /home/ubuntu/data/mastoid_dataset_0326
+dataset : mastoid.mastoid_dataset.MastoidPerFrameRawImgDataset
+datamodule: mastoid.mastoid_datamodule.MastoidDataModule
+fps_sampling : 1
+fps_sampling_test : 1
+sequence_length : 1
+num_workers : 32
+out_features : 3
+input_height : 224
+input_width : 224
+batch_size : 100
+learning_rate : 0.0005
+min_epochs : 1
+max_epochs : 1
+gpus : 1 # all available -1
