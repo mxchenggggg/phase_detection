@@ -46,12 +46,12 @@ def train(hparams, ModuleClass, ModelClass, DatasetClass, logger):
         prefix=hparams.name,
         filename=f'{{epoch}}-{{{hparams.early_stopping_metric}:.2f}}'
     )
+
     early_stop_callback = EarlyStopping(
         monitor=hparams.early_stopping_metric,
         min_delta=0.00,
         patience=3,
         mode='max')
-
 
     trainer = Trainer(
         gpus=hparams.gpus,
@@ -69,15 +69,12 @@ def train(hparams, ModuleClass, ModelClass, DatasetClass, logger):
     # ------------------------
     # 4 START TRAINING
     # ------------------------
-
     trainer.fit(module)
     print(
         f"Best: {checkpoint_callback.best_model_score} | monitor: {checkpoint_callback.monitor} | path: {checkpoint_callback.best_model_path}"
         f"\nTesting..."
     )
     trainer.test(ckpt_path=checkpoint_callback.best_model_path)
-
-
 
 if __name__ == "__main__":
     # ------------------------
@@ -127,7 +124,6 @@ if __name__ == "__main__":
 
     argparse_summary(hparams, parser)
     print('Output path: ', hparams.output_path)
-
 
     loggers = [tb_logger, wandb_logger]
     # ---------------------

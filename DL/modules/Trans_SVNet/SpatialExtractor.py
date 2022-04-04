@@ -2,7 +2,7 @@ from pytorch_lightning import LightningModule
 from torch import optim
 import configargparse
 import torchmetrics
-from torch import nn
+import torch
 
 
 class TransSVNetSpatialExtractor(LightningModule):
@@ -12,8 +12,8 @@ class TransSVNetSpatialExtractor(LightningModule):
         self.hprams = hparams
         self.model = model
 
-        # TODO: add class weight
-        self.ce_loss = nn.CrossEntropyLoss()
+        self.ce_loss = torch.nn.CrossEntropyLoss(
+            weight=torch.Tensor(hparams.class_weights).float())
 
         self.init_metrics()
 
@@ -79,6 +79,8 @@ class TransSVNetSpatialExtractor(LightningModule):
 
     @staticmethod
     def add_module_specific_args(parser: configargparse.ArgParser):
-        trans_svnet_sptial_module = parser.add_argument_group(
+        trans_svnet_sptial_module_args = parser.add_argument_group(
             title='trans_svnet_sptial_module specific args options')
+        trans_svnet_sptial_module_args.add_argument(
+            "--class_weights", type=float, nargs='+', required=True)
         return parser

@@ -1,17 +1,32 @@
-module : Trans_SVNet.SpatialExtractor.TransSVNetSpatialExtractor
+# 1. model
 model : Trans_SVNet.ResNet50.ResNet50TransSV
-data_root : /home/ubuntu/data/mastoid_dataset_0326
-dataset : mastoid.mastoid_dataset.MastoidPerFrameRawImgDataset
-datamodule: mastoid.mastoid_datamodule.MastoidDataModule
-fps_sampling : 1
-fps_sampling_test : 1
-sequence_length : 1
-num_workers : 32
-out_features : 3
 input_height : 224
 input_width : 224
+out_features : 3
+# 2. module
+module : Trans_SVNet.SpatialExtractor.TransSVNetSpatialExtractor
+class_weights: [1.0, 1.0, 1.0]
+# 3. dataset
+data_root : /home/ubuntu/data/mastoid_dataset_0326
+metadata_file: "mastoid_split_250px_30fps.pkl"
+path_col_name: "image_path"
+dataset : mastoid.mastoid_dataset.MastoidPerFrameRawImgDataset
+datamodule: mastoid.mastoid_datamodule.MastoidDataModule
+sequence_length : 1
+num_workers : 32      # for dataloader
+downsampled_fps : 1      # for training and validation
+downsampled_fps_test : 1 # for testing
+train_video_indexes : [1, 3, 4, 5, 6, 7]
+val_video_indexes : [8, 9, 10]
+test_video_indexes : [12, 13, 14]
+# dataset transform
+transform: mastoid.mastoid_transform.MastoidTrasform
+norm_mean: [0.485, 0.456, 0.406]
+norm_std: [0.229, 0.224, 0.225]
+apply_training_aug: True
+# 4. training
+gpus : 1 # all available -1
 batch_size : 100
 learning_rate : 0.0005
 min_epochs : 1
-max_epochs : 1
-gpus : 1 # all available -1
+max_epochs : 20

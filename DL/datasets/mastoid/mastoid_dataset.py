@@ -13,15 +13,13 @@ class MastoidDatasetBase(Dataset):
         base class
     """
 
-    def __init__(self, df: pd.DataFrame, seq_length: int,
+    def __init__(self, hparams, df: pd.DataFrame, seq_length: int,
                  video_indexes: List[int],
-                 transform: Optional[Compose] = None,
-                 label_col: Optional[str] = "class",
-                 path_col: Optional[str] = "path",
-                 video_idx_col: Optional[str] = "video_idx") -> None:
+                 transform: Optional[Compose] = None,) -> None:
         """ MastoidDatasetBase Constroctor  
 
         Args:
+            hparams (_type_): hyperparameters and setting read from config file
             df (pd.DataFrame): DataFrame containing metadata for all videos.
                 Required columns: 
                     1. data file path
@@ -35,21 +33,20 @@ class MastoidDatasetBase(Dataset):
                 is stored in self.video_lengths.
             video_indexes (List[int]): list of video indexes.
             transform (Optional[Compose], optional): data transform. Defaults to None.
-            label_col (Optional[str], optional): label column name in df. Defaults to "class".
-            path_col (Optional[str], optional): data file column name in df. Defaults to "path".
-            video_idx_col (Optional[str], optional): video index column name in df. Defaults to "video_idx".
         """
 
         super().__init__()
+        self.hprms = hparams
+
         self.df = df
         self.seq_length = seq_length
 
         self.transform = transform
 
         # column names in df
-        self.label_col = label_col
-        self.path_col = path_col
-        self.video_idx_col = video_idx_col
+        self.label_col = hparams.label_col_name
+        self.path_col = hparams.path_col_name
+        self.video_idx_col = hparams.video_index_col_name
 
         # Row indexes of df s.t. the subsequence of seq_length starting from
         #   the row at the index are from the same video
@@ -100,26 +97,14 @@ class MastoidDatasetBase(Dataset):
     def add_dataset_specific_args(parser: configargparse.ArgParser):
         mastoid_datset_args = parser.add_argument_group(
             title='mastoid_datset specific args options')
+        mastoid_datset_args.add_argument(
+            "--sequence_length", type=int, required=True)
         return parser
 
 
 class MastoidPerFrameRawImgDataset(MastoidDatasetBase):
     """ Per-frame raw image datset
     """
-
-    # def __init__(
-    #         self, df: pd.DataFrame, seq_length: int, video_indexes: List[int],
-    #         transform: Compose) -> None:
-    #     """ MastoidPerFrameRawImgDataset constructor
-
-    #     Args:
-    #         df (pd.DataFrame):  DataFrame containing metadata for all videos.
-    #         video_indexes (List[int]): list of video indexes.
-    #         transform (Compose): image data transform
-    #     """
-
-    #     # seq_length = 1 for per-frame data
-    #     super().__init__(df, 1, video_indexes, transform=transform)
 
     def load_img(self, index: int) -> torch.tensor:
         """ Load raw image at given index

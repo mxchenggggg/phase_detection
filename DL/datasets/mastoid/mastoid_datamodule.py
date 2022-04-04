@@ -13,20 +13,14 @@ class MastoidDataModule(LightningDataModule):
         Surgical Phase Segmentation Dataset 
     """
 
-    def __init__(
-            self, hparams, DatasetClass, transform: Optional[Compose] = None,
-            label_col: Optional[str] = "class", path_col: Optional[str] = "path",
-            video_idx_col: Optional[str] = "video_idx") -> None:
+    def __init__(self, hparams, DatasetClass,
+                 transform: Optional[Compose] = None,) -> None:
         """ MastoidDataModule constructor
 
         Args:
             hparams (_type_): hyperparameters and setting read from config file
             DatasetClass (_type_): Dataset class
             transform (Optional[Compose], optional): Data transfrom. Defaults to None.
-            label_col (Optional[str], optional): label column name in df. Defaults to "class".
-            path_col (Optional[str], optional): data file column name in df. Defaults to "path".
-            video_idx_col (Optional[str], optional): video index column name in dataset metadata csv file. 
-                                                     Defaults to "video_idx".
         """
 
         super().__init__()
@@ -35,26 +29,26 @@ class MastoidDataModule(LightningDataModule):
         self.DatasetClass = DatasetClass
 
         # fps after downsampled
+        self.original_fps = hparams.original_fps
         self.downsampled_fps = {}
-        self.downsampled_fps["train"] = hparams.fps_sampling
-        self.downsampled_fps["val"] = hparams.fps_sampling
-        self.downsampled_fps["test"] = hparams.fps_sampling_test
+        self.downsampled_fps["train"] = hparams.downsampled_fps
+        self.downsampled_fps["val"] = hparams.downsampled_fps
+        self.downsampled_fps["test"] = hparams.downsampled_fps_test
 
         # sequence length
         self.seq_len = self.hprms.sequence_length
 
-        # TODO: use config file
         self.data_root = Path(self.hprms.data_root)
-        self.dataset_metadata_file_path = "mastoid_split_250px_30fps.pkl"
+        self.dataset_metadata_file_path = self.hprms.metadata_file
 
         self.vid_idxes = {}
-        self.vid_idxes["train"] = [1, 3, 4, 5, 6, 7]
-        self.vid_idxes["val"] = [8, 9, 10]
-        self.vid_idxes["test"] = [12, 13, 14]
+        self.vid_idxes["train"] = hparams.train_video_indexes
+        self.vid_idxes["val"] = hparams.val_video_indexes
+        self.vid_idxes["test"] = hparams.test_video_indexes
 
-        self.label_col = label_col
-        self.path_col = path_col
-        self.video_idx_col = video_idx_col
+        self.label_col = hparams.label_col_name
+        self.path_col = hparams.path_col_name
+        self.video_idx_col = hparams.video_index_col_name
 
         self.transform = transform
 
@@ -79,14 +73,12 @@ class MastoidDataModule(LightningDataModule):
     def setup(self, stage: Optional[str] = None) -> None:
         """ Set up datasets for traning, validation and testing
         """
-        # TODO: pass parameters read from config file to MastoidTrasform
         self.datasets = {}
         for split in ["train", "val", "test"]:
             self.datasets[split] = self.DatasetClass(
-                self.metadata[split],
+                self.hprms, self.metadata[split],
                 self.seq_len, self.vid_idxes[split],
-                transform=self.transform, label_col=self.label_col,
-                path_col=self.path_col, video_idx_col=self.video_idx_col)
+                transform=self.transform)
 
     def train_dataloader(self) -> DataLoader:
         return self.__get_dataloader("train")
@@ -118,14 +110,41 @@ class MastoidDataModule(LightningDataModule):
         indexes = self.metadata["all"][self.video_idx_col].isin(
             self.vid_idxes[split])
         df = self.metadata["all"][indexes]
-        # TODO: magic number 30
-        if 0 < self.downsampled_fps[split] < 30:
-            factor = int(30 / self.downsampled_fps[split])
+
+        if 0 < self.downsampled_fps[split] < self.original_fps:
+            factor = int(self.original_fps / self.downsampled_fps[split])
             df = df.iloc[::factor]
         return df
 
     @staticmethod
     def add_datamodule_specific_args(parser: configargparse.ArgParser):
-        mastoid_datamodule = parser.add_argument_group(
+        mastoid_datamodule_args = parser.add_argument_group(
             title='mastoid_datamodule specific args options')
+        # metadata file
+        mastoid_datamodule_args.add_argument(
+            "--metadata_file", type=str, required=True)
+        # column names in metadata file
+        mastoid_datamodule_args.add_argument(
+            "--label_col_name", type=str, default="class")
+        mastoid_datamodule_args.add_argument(
+            "--path_col_name", type=str, default="path")
+        mastoid_datamodule_args.add_argument(
+            "--video_index_col_name", type=str, default="video_idx")
+        # video indexes for training, validation and testing
+        mastoid_datamodule_args.add_argument(
+            "--train_video_indexes", type=int, nargs='+', required=True)
+        mastoid_datamodule_args.add_argument(
+            "--val_video_indexes", type=int, nargs='+', required=True)
+        mastoid_datamodule_args.add_argument(
+            "--test_video_indexes", type=int, nargs='+', required=True)
+        # downsampleing data
+        mastoid_datamodule_args.add_argument(
+            "--original_fps", default=30, type=int)
+        mastoid_datamodule_args.add_argument(
+            "--downsampled_fps", default=1, type=int)
+        mastoid_datamodule_args.add_argument(
+            "--downsampled_fps_test", default=30, type=int)
+        # number of workers for dataloader
+        mastoid_datamodule_args.add_argument(
+            "--num_workers", type=int, default=8)
         return parser
