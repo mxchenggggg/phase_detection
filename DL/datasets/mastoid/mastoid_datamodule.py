@@ -28,27 +28,24 @@ class MastoidDataModule(LightningDataModule):
 
         self.DatasetClass = DatasetClass
 
-        # fps after downsampled
-        self.original_fps = hparams.original_fps
-        self.downsampled_fps = {}
-        self.downsampled_fps["train"] = hparams.downsampled_fps
-        self.downsampled_fps["val"] = hparams.downsampled_fps
-        self.downsampled_fps["test"] = hparams.downsampled_fps_test
+        self.data_root = Path(self.hprms.data_root)
+        self.dataset_metadata_file_path = self.hprms.metadata_file
 
         # sequence length
         self.seq_len = self.hprms.sequence_length
 
-        self.data_root = Path(self.hprms.data_root)
-        self.dataset_metadata_file_path = self.hprms.metadata_file
-
+        # fps after downsampled
+        self.original_fps = hparams.original_fps
+        self.downsampled_fps = {}
+        # video indexes for each split
         self.vid_idxes = {}
-        self.vid_idxes["train"] = hparams.train_video_indexes
-        self.vid_idxes["val"] = hparams.val_video_indexes
-        self.vid_idxes["test"] = hparams.test_video_indexes
+        for split in ["train", "val", "test", "pred"]:
+            self.vid_idxes[split] = getattr(hparams, f"{split}_video_indexes")
+            self.downsampled_fps[split] = getattr(
+                hparams, f"{split}_downsampled_fps")
 
-        self.label_col = hparams.label_col_name
-        self.path_col = hparams.path_col_name
-        self.video_idx_col = hparams.video_index_col_name
+        for attr in ["label_col", "path_col", "video_index_col"]:
+            setattr(self, attr, getattr(hparams, f"{attr}_name"))
 
         self.transform = transform
 
@@ -67,14 +64,14 @@ class MastoidDataModule(LightningDataModule):
         self.metadata["all"] = self.metadata["all"].reset_index()
 
         # split and downsample metadata
-        for split in ["train", "val", "test"]:
+        for split in ["train", "val", "test", "pred"]:
             self.metadata[split] = self.__split_metadata_donwsampled(split)
 
     def setup(self, stage: Optional[str] = None) -> None:
-        """ Set up datasets for traning, validation and testing
+        """ Set up datasets for traning, validation, testing and prediction
         """
         self.datasets = {}
-        for split in ["train", "val", "test"]:
+        for split in ["train", "val", "test", "pred"]:
             self.datasets[split] = self.DatasetClass(
                 self.hprms, self.metadata[split],
                 self.seq_len, self.vid_idxes[split],
@@ -88,7 +85,10 @@ class MastoidDataModule(LightningDataModule):
 
     def test_dataloader(self) -> DataLoader:
         return self.__get_dataloader("test")
-    
+
+    def predict_dataloader(self):
+        return self.__get_dataloader("pred")
+
     def __get_dataloader(self, split: str) -> DataLoader:
         shuffle = False
         if split == "train":
@@ -99,7 +99,7 @@ class MastoidDataModule(LightningDataModule):
             num_workers=self.hprms.num_workers)
 
     def __split_metadata_donwsampled(self, split: str) -> pd.DataFrame:
-        """ Split metadata for all videos for training, validation and testing
+        """ Split metadata for all videos for training, validation, testing and prediction
 
         Args:
             split (str): name of the split(train/val/test)
@@ -107,7 +107,7 @@ class MastoidDataModule(LightningDataModule):
         Returns:
             pd.DataFrame: metadata Dataframe for the split
         """
-        indexes = self.metadata["all"][self.video_idx_col].isin(
+        indexes = self.metadata["all"][self.video_index_col].isin(
             self.vid_idxes[split])
         df = self.metadata["all"][indexes]
 
@@ -120,6 +120,7 @@ class MastoidDataModule(LightningDataModule):
     def add_specific_args(parser: configargparse.ArgParser):
         mastoid_datamodule_args = parser.add_argument_group(
             title='mastoid_datamodule specific args options')
+
         # metadata file
         mastoid_datamodule_args.add_argument(
             "--metadata_file", type=str, required=True)
@@ -130,6 +131,7 @@ class MastoidDataModule(LightningDataModule):
             "--path_col_name", type=str, default="path")
         mastoid_datamodule_args.add_argument(
             "--video_index_col_name", type=str, default="video_idx")
+
         # video indexes for training, validation and testing
         mastoid_datamodule_args.add_argument(
             "--train_video_indexes", type=int, nargs='+', required=True)
@@ -137,13 +139,21 @@ class MastoidDataModule(LightningDataModule):
             "--val_video_indexes", type=int, nargs='+', required=True)
         mastoid_datamodule_args.add_argument(
             "--test_video_indexes", type=int, nargs='+', required=True)
+        mastoid_datamodule_args.add_argument(
+            "--pred_video_indexes", type=int, nargs='+', default=[])
+
         # downsampleing data
         mastoid_datamodule_args.add_argument(
             "--original_fps", default=30, type=int)
         mastoid_datamodule_args.add_argument(
-            "--downsampled_fps", default=1, type=int)
+            "--train_downsampled_fps", default=1, type=int)
         mastoid_datamodule_args.add_argument(
-            "--downsampled_fps_test", default=30, type=int)
+            "--val_downsampled_fps", default=1, type=int)
+        mastoid_datamodule_args.add_argument(
+            "--test_downsampled_fps", default=1, type=int)
+        mastoid_datamodule_args.add_argument(
+            "--pred_downsampled_fps", default=1, type=int)
+
         # number of workers for dataloader
         mastoid_datamodule_args.add_argument(
             "--num_workers", type=int, default=8)

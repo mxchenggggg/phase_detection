@@ -14,11 +14,10 @@ dataset : mastoid.mastoid_dataset.MastoidPerFrameRawImgDataset
 datamodule: mastoid.mastoid_datamodule.MastoidDataModule
 sequence_length : 1
 num_workers : 32      # for dataloader
-downsampled_fps : 1      # for training and validation
-downsampled_fps_test : 1 # for testing
 train_video_indexes : [1, 3, 4, 5, 6, 7]
 val_video_indexes : [8, 9, 10]
 test_video_indexes : [12, 13, 14]
+pred_video_indexes : [1]
 # dataset transform
 transform: mastoid.mastoid_transform.MastoidTrasform
 norm_mean: [0.485, 0.456, 0.406]
@@ -27,8 +26,10 @@ apply_training_aug: True
 # 4. training
 gpus : 1 # all available -1
 early_stopping_metric : val_acc
+early_stopping_metric_mode: max
 batch_size : 100
 learning_rate : 0.0005
 min_epochs : 5
 max_epochs : 50
-# resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220405-014440_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV/checkpoints/220405-014440_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV-epoch=7-val_loss=1.93.ckpt
+resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220405-164302_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV/checkpoints/epoch=2-val_acc=0.71.ckpt
+prediction_root: /home/ubuntu/data/prediction/TransSVNetSpatial/

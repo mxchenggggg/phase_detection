@@ -72,10 +72,10 @@ class MastoidDatasetBase(Dataset):
                 self.valid_seq_start_indexes.append(row_indexes[0])
 
     def __getitem__(self, index: int) -> Any:
-        """get data point at givin index. Derived class must implement this method
+        """ Get data point at givin index. Derived class must implement this method
 
         Args:
-            index (int): _description_
+            index (int): index
 
         Raises:
             NotImplementedError: not implemented
@@ -93,6 +93,35 @@ class MastoidDatasetBase(Dataset):
         """
         return len(self.valid_seq_start_indexes)
 
+    def load_input_file(self, index: int) -> torch.Tensor:
+        """ Load file at given index
+
+        Args:
+            index (int): _description_
+
+        Raises:
+            NotImplementedError: not implemented
+
+
+        Returns:
+            torch.tensor: file as torch tensor
+        """
+        raise NotImplementedError
+    
+    def load_label(self, index:int)->torch.Tensor:
+        """ Load label at given index
+
+        Args:
+            index (int): index
+
+        Raises:
+            NotImplementedError: not implemented
+
+        Returns:
+            torch.Tensor: label as torch tensor
+        """
+        raise NotImplementedError
+
     @staticmethod
     def add_specific_args(parser: configargparse.ArgParser):
         mastoid_datset_args = parser.add_argument_group(
@@ -106,7 +135,7 @@ class MastoidPerFrameRawImgDataset(MastoidDatasetBase):
     """ Per-frame raw image datset
     """
 
-    def load_img(self, index: int) -> torch.tensor:
+    def load_input_file(self, index: int) -> torch.Tensor:
         """ Load raw image at given index
 
         Args:
@@ -122,9 +151,9 @@ class MastoidPerFrameRawImgDataset(MastoidDatasetBase):
             img = self.transform(image=img)["image"]
         return img.type(torch.FloatTensor)
 
-    def load_label(self, index: int) -> torch.tensor:
+    def load_label(self, index: int) -> torch.Tensor:
         return torch.tensor(
             int(self.df.iloc[index, self.df.columns.get_loc(self.label_col)]))
 
     def __getitem__(self, index):
-        return self.load_img(index), self.load_label(index)
+        return self.load_file(index), self.load_label(index)

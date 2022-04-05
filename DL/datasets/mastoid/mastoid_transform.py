@@ -30,7 +30,7 @@ class MastoidTrasform:
                                           value=hparams.value,
                                           p=hparams.p)
 
-        # transforms for trainig, validation and testing
+        # transforms for trainig, validation, testing and prediction
         self.transforms = {}
         if hparams.apply_training_aug:
             self.transforms["train"] = Compose(
@@ -41,6 +41,7 @@ class MastoidTrasform:
         self.transforms["val"] = Compose(
             [self.resize, self.normalize, ToTensorV2()])
         self.transforms["test"] = self.transforms["val"]
+        self.transforms["pred"] = self.transforms["val"]
 
     def get_transform(self, split: str) -> Compose:
         """_summary_
@@ -56,11 +57,13 @@ class MastoidTrasform:
     def add_specific_args(parser: configargparse.ArgParser):
         mastoid_transform_args = parser.add_argument_group(
             title='mastoid_transform specific args options')
+
         # normalization
         mastoid_transform_args.add_argument(
             "--norm_mean", type=float, nargs='+', required=True)
         mastoid_transform_args.add_argument(
             "--norm_std", type=float, nargs='+', required=True)
+
         # training augmentation
         mastoid_transform_args.add_argument(
             "--apply_training_aug", type=bool, default=False)

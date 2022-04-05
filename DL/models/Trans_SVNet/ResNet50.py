@@ -3,7 +3,8 @@ import torch.nn as nn
 from torchvision import models
 
 class ResNet50TransSV(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, hprms):
+        self.hprms = hprms
         super(ResNet50TransSV, self).__init__()
         resnet = models.resnet50(pretrained=True)
         self.share = torch.nn.Sequential()

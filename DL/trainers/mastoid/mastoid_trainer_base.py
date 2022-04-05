@@ -1,10 +1,8 @@
 import configargparse
 import os
-from pathlib import Path
-from typing import Type
 from datetime import datetime
 
-from pytorch_lightning import LightningModule, Trainer
+from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, ModelSummary
 
@@ -14,7 +12,11 @@ from utils.utils import (
     get_class_by_path,
 )
 
-class MastoidTrainer:
+
+class MastoidTrainerBase:
+    """ Trainer base class for Mastoidectomy 
+        Surgical Phase Segmentation 
+    """
     def __init__(self) -> None:
         # 1. initialize argument parser
         self.parser = configargparse.ArgParser(
@@ -42,31 +44,33 @@ class MastoidTrainer:
     def __call__(self) -> None:
         if self.hprms.p:
             # prediction mode
-            print("prediction")
-            trainer = Trainer(
-                gpus=self.hprms.gpus, logger=self.loggers,
-                resume_from_checkpoint=self.hprms.resume_from_checkpoint)
-            predictions = trainer.predict(
-                self.module, datamodule=self.datamodule)
-            self.datamodule.save_predictions(predictions)
+            self._predict()
         else:
-            self._set_checkpoint_callback()
-            self._set_early_stop_callback()
-            trainer = Trainer(
-                gpus=self.hprms.gpus, logger=self.loggers,
-                min_epochs=self.hprms.min_epochs,
-                max_epochs=self.hprms.max_epochs,
-                callbacks=[self.checkpoint_callback,
-                           self.early_stop_callback,
-                           ModelSummary(max_depth=-1)],
-                resume_from_checkpoint=self.hprms.resume_from_checkpoint)
-            trainer.fit(self.module, datamodule=self.datamodule)
-            print(
-                f"Best: {self.checkpoint_callback.best_model_score} | monitor: {self.checkpoint_callback.monitor} | path: {self.checkpoint_callback.best_model_path}"
-                f"\nTesting..."
-            )
-            trainer.test(ckpt_path=self.checkpoint_callback.best_model_path,
-                         datamodule=self.datamodule)
+            # training   mode
+            self._train()
+
+    def _train(self) -> None:
+        self._set_checkpoint_callback()
+        self._set_early_stop_callback()
+        trainer = Trainer(
+            gpus=self.hprms.gpus, logger=self.loggers,
+            min_epochs=self.hprms.min_epochs,
+            max_epochs=self.hprms.max_epochs,
+            callbacks=[self.checkpoint_callback,
+                       self.early_stop_callback,
+                       ModelSummary(max_depth=-1)],
+            resume_from_checkpoint=self.hprms.resume_from_checkpoint)
+        trainer.fit(self.module, datamodule=self.datamodule)
+        print(
+            f"Best: {self.checkpoint_callback.best_model_score} | monitor: {self.checkpoint_callback.monitor} | path: {self.checkpoint_callback.best_model_path}"
+            f"\nTesting..."
+        )
+        trainer.test(ckpt_path=self.checkpoint_callback.best_model_path,
+                     datamodule=self.datamodule)
+
+
+    def _predict(self) -> None:
+        raise NotImplementedError
 
     def _get_classes_and_add_specific_args(self) -> None:
         """ Get ModuleClass, ModelClass, DatasetClass, DatamoduleClass,
@@ -118,8 +122,3 @@ class MastoidTrainer:
             min_delta=0.00,
             patience=3,
         )
-
-
-if __name__ == "__main__":
-    trainer = MastoidTrainer()
-    trainer()
