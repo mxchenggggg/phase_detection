@@ -94,7 +94,7 @@ class MastoidDatasetBase(Dataset):
         return len(self.valid_seq_start_indexes)
 
     @staticmethod
-    def add_dataset_specific_args(parser: configargparse.ArgParser):
+    def add_specific_args(parser: configargparse.ArgParser):
         mastoid_datset_args = parser.add_argument_group(
             title='mastoid_datset specific args options')
         mastoid_datset_args.add_argument(

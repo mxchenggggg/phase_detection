@@ -4,7 +4,7 @@ from datasets.mastoid.mastoid_transform import MastoidTrasform
 import pandas as pd
 from pathlib import Path
 from albumentations import Compose
-from typing import Optional
+from typing import Optional, Any
 import configargparse
 
 
@@ -14,7 +14,7 @@ class MastoidDataModule(LightningDataModule):
     """
 
     def __init__(self, hparams, DatasetClass,
-                 transform: Optional[Compose] = None,) -> None:
+                 transform: Optional[Any] = None) -> None:
         """ MastoidDataModule constructor
 
         Args:
@@ -62,8 +62,8 @@ class MastoidDataModule(LightningDataModule):
             self.data_root, self.dataset_metadata_file_path)
         self.metadata["all"] = pd.read_pickle(metafile_path)
 
-        # assert self.metadata["all"].isnull().values.any(
-        # ), "Dataframe contains nan Elements"
+        assert not self.metadata["all"].isnull().values.any(
+        ), "Dataframe contains nan Elements"
         self.metadata["all"] = self.metadata["all"].reset_index()
 
         # split and downsample metadata
@@ -78,7 +78,7 @@ class MastoidDataModule(LightningDataModule):
             self.datasets[split] = self.DatasetClass(
                 self.hprms, self.metadata[split],
                 self.seq_len, self.vid_idxes[split],
-                transform=self.transform)
+                transform=self.transform.get_transform(split))
 
     def train_dataloader(self) -> DataLoader:
         return self.__get_dataloader("train")
@@ -88,7 +88,7 @@ class MastoidDataModule(LightningDataModule):
 
     def test_dataloader(self) -> DataLoader:
         return self.__get_dataloader("test")
-
+    
     def __get_dataloader(self, split: str) -> DataLoader:
         shuffle = False
         if split == "train":
@@ -117,7 +117,7 @@ class MastoidDataModule(LightningDataModule):
         return df
 
     @staticmethod
-    def add_datamodule_specific_args(parser: configargparse.ArgParser):
+    def add_specific_args(parser: configargparse.ArgParser):
         mastoid_datamodule_args = parser.add_argument_group(
             title='mastoid_datamodule specific args options')
         # metadata file

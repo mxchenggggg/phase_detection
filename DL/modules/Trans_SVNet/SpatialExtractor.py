@@ -23,8 +23,10 @@ class TransSVNetSpatialExtractor(LightningModule):
         self.test_acc = torchmetrics.Accuracy()
 
     def forward(self, x):
-        output = self.model.forward(x)
-        return output
+        return self.model.forward(x)
+         
+    def get_spatial_feature(self, x):
+        return self.model.get_spatial_feature(x)
 
     def loss(self, p_phase, labels_phase):
         loss = self.ce_loss(p_phase, labels_phase)
@@ -77,8 +79,13 @@ class TransSVNetSpatialExtractor(LightningModule):
                  logger=True, on_epoch=True, on_step=False)
         return {"test_loss": loss}
 
+    def predict_step(self, batch, batch_idx):
+        x, _ = batch
+        features = self.get_spatial_feature(x)
+        return features
+
     @staticmethod
-    def add_module_specific_args(parser: configargparse.ArgParser):
+    def add_specific_args(parser: configargparse.ArgParser):
         trans_svnet_sptial_module_args = parser.add_argument_group(
             title='trans_svnet_sptial_module specific args options')
         trans_svnet_sptial_module_args.add_argument(

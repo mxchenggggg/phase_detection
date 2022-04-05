@@ -53,7 +53,7 @@ class MastoidTrasform:
         """
         return self.transforms[split]
 
-    def add_transform_specific_args(parser: configargparse.ArgParser):
+    def add_specific_args(parser: configargparse.ArgParser):
         mastoid_transform_args = parser.add_argument_group(
             title='mastoid_transform specific args options')
         # normalization

@@ -27,8 +27,14 @@ class ResNet50TransSV(torch.nn.Module):
         y = self.fc(x)
         return y
 
+    def get_spatial_feature(self, x):
+        x = x.view(-1, 3, 224, 224)
+        x = self.share.forward(x)
+        x = x.view(-1, 2048)
+        return x
+
     @staticmethod
-    def add_model_specific_args(parser):  # pragma: no cover
+    def add_specific_args(parser):  # pragma: no cover
         resnet50_trans_svnet_args = parser.add_argument_group(
             title='resnet50_trans_svnet specific args options')
         return parser

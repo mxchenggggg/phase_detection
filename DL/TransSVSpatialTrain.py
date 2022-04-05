@@ -23,7 +23,7 @@ def train(
 
     # load datamodule
     datamodule = DataModuleClass(
-        hparams, DatasetClass, transform.get_transform("train"))
+        hparams, DatasetClass, transform)
 
     # loda model
     model = ModelClass()
@@ -37,7 +37,6 @@ def train(
         verbose=True,
         monitor=hparams.early_stopping_metric,
         mode='max',
-        # prefix=hparams.name,
         filename=f'{hparams.name}-{{epoch}}-{{{hparams.early_stopping_metric}:.2f}}'
     )
     early_stop_callback = EarlyStopping(
@@ -47,12 +46,11 @@ def train(
         mode='max')
 
     trainer = Trainer(
-        gpus=hparams.gpus,
-        logger=logger,
-        min_epochs=hparams.min_epochs,
+        gpus=hparams.gpus, logger=logger, min_epochs=hparams.min_epochs,
         max_epochs=hparams.max_epochs,
-        callbacks=[checkpoint_callback, ModelSummary(max_depth=-1)]
-    )
+        callbacks=[checkpoint_callback, early_stop_callback,
+                   ModelSummary(max_depth=-1)],
+        resume_from_checkpoint=hparams.resume_from_checkpoint)
 
     trainer.fit(module, datamodule=datamodule)
     print(
@@ -64,36 +62,26 @@ def train(
                  datamodule=datamodule)
 
 
+def get_class_and_add_args(parser, hparams, dir: str, name: str):
+    path = f"{dir}.{getattr(hparams, name)}"
+    Class = get_class_by_path(path)
+    return Class.add_specific_args(parser)
+
+
 if __name__ == "__main__":
     parser = configargparse.ArgParser(
         config_file_parser_class=configargparse.YAMLConfigFileParser)
-    parser.add('-c', is_config_file=True, help='config file path')
+    parser.add_argument('-c', is_config_file_arg=True, help='config file path')
     parser, hparams = build_configargparser(parser)
 
-    # module class
-    module_path = f"modules.{hparams.module}"
-    ModuleClass = get_class_by_path(module_path)
-    parser = ModuleClass.add_module_specific_args(parser)
-
-    # model class
-    model_path = f"models.{hparams.model}"
-    ModelClass = get_class_by_path(model_path)
-    parser = ModelClass.add_model_specific_args(parser)
-
-    # dataset class
-    dataset_path = f"datasets.{hparams.dataset}"
-    DatasetClass = get_class_by_path(dataset_path)
-    parser = DatasetClass.add_dataset_specific_args(parser)
-
-    # datamodule class
-    datamodule_path = f"datasets.{hparams.datamodule}"
-    DataModuleClass = get_class_by_path(datamodule_path)
-    parser = DataModuleClass.add_datamodule_specific_args(parser)
-
-    # transform class
-    transform_path = f"datasets.{hparams.transform}"
-    TransformClass = get_class_by_path(transform_path)
-    parser = TransformClass.add_transform_specific_args(parser)
+    ModuleClass = get_class_and_add_args(parser, hparams, "modules", "module")
+    ModelClass = get_class_and_add_args(parser, hparams, "models", "model")
+    DatasetClass = get_class_and_add_args(
+        parser, hparams, "datasets", "dataset")
+    DataModuleClass = get_class_and_add_args(
+        parser, hparams, "datasets", "datamodule")
+    TransformClass = get_class_and_add_args(
+        parser, hparams, "datasets", "transform")
 
     hparams = parser.parse_args()
     argparse_summary(hparams, parser)
@@ -107,10 +95,9 @@ if __name__ == "__main__":
         os.path.abspath(hparams.output_path), hparams.name)
 
     tb_logger = TensorBoardLogger(hparams.output_path, name='tb')
-    # wandb_logger = WandbLogger(name=hparams.name, project="transsvnet")
+    wandb_logger = WandbLogger(name=hparams.name, project="transsvnet")
 
-    # loggers = [tb_logger, wandb_logger]
-    loggers = [tb_logger]
+    loggers = [tb_logger, wandb_logger]
 
     train(hparams, ModuleClass, ModelClass,
           DatasetClass, DataModuleClass, TransformClass, loggers)

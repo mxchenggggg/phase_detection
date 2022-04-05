@@ -26,7 +26,9 @@ norm_std: [0.229, 0.224, 0.225]
 apply_training_aug: True
 # 4. training
 gpus : 1 # all available -1
+early_stopping_metric : val_acc
 batch_size : 100
 learning_rate : 0.0005
-min_epochs : 1
-max_epochs : 20
+min_epochs : 5
+max_epochs : 50
+# resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220405-014440_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV/checkpoints/220405-014440_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV-epoch=7-val_loss=1.93.ckpt
