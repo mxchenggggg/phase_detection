@@ -124,10 +124,9 @@ class MastoidTrainerBase:
         hprms = self.parser.parse_args()
         argparse_summary(hprms, self.parser)
 
-        # return objects
+        # get objects
         transform = self.TransformClass(hprms)
-        datamodule = self.DatamoduleClass(
-            hprms, self.DatasetClass, transform)
+        datamodule = self.DatamoduleClass(hprms, self.DatasetClass, transform)
         model = self.ModelClass(hprms)
         module = self.ModuleClass(hprms, model)
 

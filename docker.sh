@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 username=`whoami`
 docker_image_name="surgical_phase_detection:base"
-docker_container_name="surgical_phase_detection_${username}"
 
 function docker_del () {
     running_count=`docker ps | grep -w ${docker_container_name} | wc -l`
@@ -72,18 +71,21 @@ function print_help() {
     "
 }
 
-while getopts "rdnbh" arg
+while getopts "r:d:n:bh" arg
 do
     case $arg in
         r)
+            docker_container_name="surgical_phase_detection_${OPTARG}"
             docker_run
             exit 0
             ;;
         d)
+            docker_container_name="surgical_phase_detection_${OPTARG}"
             docker_del
             exit 0
             ;;
         n)
+            docker_container_name="surgical_phase_detection_${OPTARG}"
             docker_new_ternimal
             exit 0
             ;;
