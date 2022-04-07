@@ -156,4 +156,4 @@ class MastoidPerFrameRawImgDataset(MastoidDatasetBase):
             int(self.df.iloc[index, self.df.columns.get_loc(self.label_col)]))
 
     def __getitem__(self, index):
-        return self.load_file(index), self.load_label(index)
+        return self.load_input_file(index), self.load_label(index)

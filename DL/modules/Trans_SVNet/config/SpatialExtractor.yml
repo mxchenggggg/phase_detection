@@ -32,4 +32,4 @@ learning_rate : 0.0005
 min_epochs : 5
 max_epochs : 50
 resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220405-164302_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV/checkpoints/epoch=2-val_acc=0.71.ckpt
-prediction_root: /home/ubuntu/data/prediction/TransSVNetSpatial/
+prediction_output_path: /home/ubuntu/data/prediction/TransSVNetSpatial/220405-164302_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV

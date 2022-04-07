@@ -12,19 +12,27 @@ from utils.utils import (
     get_class_by_path,
 )
 
+from typing import Optional
+
 
 class MastoidTrainerBase:
     """ Trainer base class for Mastoidectomy 
         Surgical Phase Segmentation 
     """
-    def __init__(self) -> None:
+
+    def __init__(self, default_config_file:  Optional[str] = None) -> None:
         # 1. initialize argument parser
-        self.parser = configargparse.ArgParser(
-            config_file_parser_class=configargparse.YAMLConfigFileParser)
+        if default_config_file is None:
+            self.parser = configargparse.ArgParser(
+                config_file_parser_class=configargparse.YAMLConfigFileParser)
+        else:
+            self.parser = configargparse.ArgParser(
+                config_file_parser_class=configargparse.YAMLConfigFileParser,
+                default_config_files=[default_config_file])
         self.parser.add_argument(
-            '-c', is_config_file_arg=True, help='config file path')
+            '-c', '--config', is_config_file_arg=True, help='config file path')
         self.parser.add_argument(
-            '-p', action='store_true', help="prediction mode flag")
+            '-p', '--predict', action='store_true', help="prediction mode flag")
 
         # 2. build argument parser
         self.parser, self.hprms = build_configargparser(self.parser)
@@ -42,11 +50,11 @@ class MastoidTrainerBase:
         self.loggers = [tb_logger, wandb_logger]
 
     def __call__(self) -> None:
-        if self.hprms.p:
+        if self.hprms.predict:
             # prediction mode
             self._predict()
         else:
-            # training   mode
+            # training mode
             self._train()
 
     def _train(self) -> None:
@@ -67,7 +75,6 @@ class MastoidTrainerBase:
         )
         trainer.test(ckpt_path=self.checkpoint_callback.best_model_path,
                      datamodule=self.datamodule)
-
 
     def _predict(self) -> None:
         raise NotImplementedError
@@ -95,15 +102,24 @@ class MastoidTrainerBase:
         self.module = self.ModuleClass(self.hprms, self.model)
 
     def _set_output_path(self) -> None:
-        """ Setup output path for logs and checkpoints
+        """ Setup output path for logs and checkpoints in training mode, 
+            and output path for prediciton in predict mode
         """
-        exp_name = (
-            self.hprms.module.split(".")[-1] + "_" + self.hprms.dataset.split(".")
-            [-1] + "_" + self.hprms.model.replace(".", "_"))
-        date_str = datetime.now().strftime("%y%m%d-%H%M%S_")
-        self.hprms.name = date_str + exp_name
-        self.hprms.output_path = os.path.join(
-            os.path.abspath(self.hprms.output_path), self.hprms.name)
+        if self.hprms.predict:
+            # prediction mode
+            self.hprms.output_path = os.path.abspath(
+                self.hprms.prediction_output_path)
+            if not os.path.exists(self.hprms.output_path):
+                os.makedirs(self.hprms.output_path)
+        else:
+            # training mode
+            exp_name = (
+                self.hprms.module.split(".")[-1] + "_" + self.hprms.dataset.split(".")
+                [-1] + "_" + self.hprms.model.replace(".", "_"))
+            date_str = datetime.now().strftime("%y%m%d-%H%M%S_")
+            self.hprms.name = date_str + exp_name
+            self.hprms.output_path = os.path.join(
+                os.path.abspath(self.hprms.output_path), self.hprms.name)
 
     def _set_checkpoint_callback(self) -> None:
         self.checkpoint_callback = ModelCheckpoint(

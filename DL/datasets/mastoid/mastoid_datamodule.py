@@ -61,11 +61,12 @@ class MastoidDataModule(LightningDataModule):
 
         assert not self.metadata["all"].isnull().values.any(
         ), "Dataframe contains nan Elements"
-        self.metadata["all"] = self.metadata["all"].reset_index()
+        self.metadata["all"] = self.metadata["all"].reset_index(drop=True)
 
         # split and downsample metadata
         for split in ["train", "val", "test", "pred"]:
             self.metadata[split] = self.__split_metadata_donwsampled(split)
+            self.metadata[split].reset_index(drop=True, inplace=True)
 
     def setup(self, stage: Optional[str] = None) -> None:
         """ Set up datasets for traning, validation, testing and prediction
@@ -76,6 +77,7 @@ class MastoidDataModule(LightningDataModule):
                 self.hprms, self.metadata[split],
                 self.seq_len, self.vid_idxes[split],
                 transform=self.transform.get_transform(split))
+            
 
     def train_dataloader(self) -> DataLoader:
         return self.__get_dataloader("train")
