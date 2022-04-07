@@ -64,7 +64,7 @@ def build_configargparser(parser: configargparse.ArgParser):
     trainer_group.add_argument("--name", default=None, type=str)
 
     trainer_group.add_argument("--on_polyaxon", action="store_true")
-    trainer_group.add_argument("--output_path", type=str, default="logs")
+    trainer_group.add_argument("--logs_checkpoints_output_path", type=str, default="logs")
 
     dataset_group.add_argument("--prediction_output_path", default="", type=str)
 
