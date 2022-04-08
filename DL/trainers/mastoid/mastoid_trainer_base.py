@@ -82,17 +82,19 @@ class MastoidTrainerBase:
     def _train(self) -> None:
         """ Training
         """
+        self.checkpoint_callback = self._get_checkpoint_callback()
+        self.early_stop_callback = self._get_early_stop_callback()
         trainer = Trainer(
             gpus=self.hprms.gpus, logger=self.loggers,
             min_epochs=self.hprms.min_epochs,
             max_epochs=self.hprms.max_epochs,
-            callbacks=[self._get_checkpoint_callback(),
-                       self._get_early_stop_callback(),
+            callbacks=[self.checkpoint_callback,
+                       self.early_stop_callback,
                        ModelSummary(max_depth=-1)],
             resume_from_checkpoint=self.hprms.resume_from_checkpoint)
         trainer.fit(self.module, datamodule=self.datamodule)
         print(
-            f"Best: {self.checkpoint_callback.best_model_score} | monitor: {self.checkpoint_description__callback.monitor} | path: {self.checkpoint_callback.best_model_path}"
+            f"Best: {self.checkpoint_callback.best_model_score} | monitor: {self.checkpoint_callback.monitor} | path: {self.checkpoint_callback.best_model_path}"
             f"\nTesting..."
         )
         trainer.test(ckpt_path=self.checkpoint_callback.best_model_path,

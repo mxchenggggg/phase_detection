@@ -13,7 +13,7 @@ class TransSVNetSpatialExtractor(LightningModule):
         self.model = model
 
         self.ce_loss = torch.nn.CrossEntropyLoss(
-            weight=torch.Tensor(hparams.class_weights).float())
+            weight=torch.tensor(hparams.class_weights).float())
 
         self.init_metrics()
 
@@ -29,6 +29,8 @@ class TransSVNetSpatialExtractor(LightningModule):
         return self.model.get_spatial_feature(x)
 
     def loss(self, p_phase, labels_phase):
+        print(p_phase.shape)
+        print(labels_phase.shape)
         loss = self.ce_loss(p_phase, labels_phase)
         return loss
 

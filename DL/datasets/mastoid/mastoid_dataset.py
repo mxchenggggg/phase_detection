@@ -93,35 +93,6 @@ class MastoidDatasetBase(Dataset):
         """
         return len(self.valid_seq_start_indexes)
 
-    def load_input_file(self, index: int) -> torch.Tensor:
-        """ Load file at given index
-
-        Args:
-            index (int): _description_
-
-        Raises:
-            NotImplementedError: not implemented
-
-
-        Returns:
-            torch.tensor: file as torch tensor
-        """
-        raise NotImplementedError
-    
-    def load_label(self, index:int)->torch.Tensor:
-        """ Load label at given index
-
-        Args:
-            index (int): index
-
-        Raises:
-            NotImplementedError: not implemented
-
-        Returns:
-            torch.Tensor: label as torch tensor
-        """
-        raise NotImplementedError
-
     @staticmethod
     def add_specific_args(parser: configargparse.ArgParser):
         mastoid_datset_args = parser.add_argument_group(
