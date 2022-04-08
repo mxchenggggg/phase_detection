@@ -3,7 +3,7 @@ import torch
 from typing import Any
 
 
-class TransSVNetTempporalPerVideoDataset(MastoidDatasetBase):
+class TransSVNetTemporalPerVideoDataset(MastoidDatasetBase):
     def __getitem__(self, index: int) -> Any:
         start_index = self.valid_seq_start_indexes[index]
         video_len = self.video_lengths[index]

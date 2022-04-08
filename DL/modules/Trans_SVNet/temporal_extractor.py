@@ -192,6 +192,11 @@ class TransSVNetTemporalExtractor(LightningModule):
         self.log("test_acc", test_acc)
         self.log_average_precision_recall(outputs, step="test")
 
+    def predict_step(self, batch, batch_idx):
+        x, _ = batch
+        features = self.forward(x)
+        return features[-1].squeeze().transpose(0, 1)
+
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(),
                                lr=self.hprms.learning_rate)
