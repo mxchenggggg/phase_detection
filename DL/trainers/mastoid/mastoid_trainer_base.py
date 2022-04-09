@@ -66,7 +66,8 @@ class MastoidTrainerBase:
 
         # 5. loggers
         tb_logger = TensorBoardLogger(self.hprms.output_path, name='tb')
-        wandb_logger = WandbLogger(name=self.hprms.name, project="transsvnet")
+        wandb_logger = WandbLogger(name=self.hprms.name, project="transsvnet", entity="cis2mastoid")
+        
         self.loggers = [tb_logger, wandb_logger]
 
     def __call__(self) -> None:

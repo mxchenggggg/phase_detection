@@ -22,14 +22,14 @@ class ResNet50TransSV(torch.nn.Module):
                                 nn.Linear(512, 3))
 
     def forward(self, x):
-        x = x.view(-1, 3, 224, 224)
+        # x = x.view(-1, 3, self.hprms.input_width, self.hprms.input_height)
         x = self.share.forward(x)
         x = x.view(-1, 2048)
         y = self.fc(x)
         return y
 
     def get_spatial_feature(self, x):
-        x = x.view(-1, 3, 224, 224)
+        # x = x.view(-1, 3, self.hprms.input_width, self.hprms.input_height)
         x = self.share.forward(x)
         x = x.view(-1, 2048)
         return x

@@ -95,9 +95,9 @@ class MastoidDatasetBase(Dataset):
 
     @staticmethod
     def add_specific_args(parser: configargparse.ArgParser):
-        mastoid_datset_args = parser.add_argument_group(
+        mastoid_dataset_args = parser.add_argument_group(
             title='mastoid_datset specific args options')
-        mastoid_datset_args.add_argument(
+        mastoid_dataset_args.add_argument(
             "--sequence_length", type=int, required=True)
         return parser
 

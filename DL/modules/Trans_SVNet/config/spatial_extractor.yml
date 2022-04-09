@@ -1,28 +1,28 @@
 # 1. model
 model : Trans_SVNet.res_net50.ResNet50TransSV
-input_height : 224
-input_width : 224
+input_height : 225
+input_width : 400
 out_features : 3
 # 2. module
 module : Trans_SVNet.spatial_extractor.TransSVNetSpatialExtractor
-class_weights: [1.0, 1.0, 1.0]
+class_weights: [1.0, 2.019093793836055, 0.6161134683394908]
 # 3. dataset
-data_root : /home/ubuntu/data/mastoid_dataset_0326
+data_root : /home/ubuntu/data/mastoid_dataset_400225
 metadata_file: "mastoid_split_250px_30fps.pkl"
 path_col_name: "image_path"
 dataset : mastoid.mastoid_dataset.MastoidPerFrameRawImgDataset
 datamodule: mastoid.mastoid_datamodule.MastoidDataModule
 sequence_length : 1
 num_workers : 32      # for dataloader
-train_video_indexes : [1, 3, 4, 5, 6, 7]
-val_video_indexes : [8, 9, 10]
-test_video_indexes : [12, 13, 14]
-pred_video_indexes : [1, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14]
+train_video_indexes : [1, 3, 4, 6, 7, 10, 11, 12, 14]
+val_video_indexes : [5, 8]
+test_video_indexes : [5, 8]
+pred_video_indexes : [1, 3, 4, 5, 6, 7, 8, 10, 11, 12, 14]
 # dataset transform
 transform: mastoid.mastoid_transform.MastoidTrasform
 norm_mean: [0.485, 0.456, 0.406]
 norm_std: [0.229, 0.224, 0.225]
-apply_training_aug: True
+apply_training_aug: False
 # 4. training
 gpus : 0 # all available -1
 early_stopping_metric : val_acc
@@ -31,5 +31,5 @@ batch_size : 100
 learning_rate : 0.0005
 min_epochs : 5
 max_epochs : 50
-resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220405-164302_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV/checkpoints/epoch=2-val_acc=0.71.ckpt
-prediction_output_path: /home/ubuntu/data/prediction/TransSVNetSpatial/220405-164302_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV
+# resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220405-164302_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV/checkpoints/epoch=2-val_acc=0.71.ckpt
+# prediction_output_path: /home/ubuntu/data/prediction/TransSVNetSpatial/220405-164302_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV

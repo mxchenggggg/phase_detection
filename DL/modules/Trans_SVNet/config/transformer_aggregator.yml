@@ -1,0 +1,43 @@
+# 1. model
+model : Trans_SVNet.transformer.Transformer
+input_height : 224
+input_width : 224
+out_features : 3
+n_layers : 1
+n_heads : 8
+mstcn_f_maps : 32
+mstcn_f_dim: 2048
+# 2. module
+module : Trans_SVNet.transformer_aggregator.TransSVNetTransformerAggregator
+class_weights: [1.0, 1.0, 1.0]
+# 3. dataset
+data_root : /home/ubuntu/data/prediction/TransSVNetTemporal/220408-143902_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel/
+metadata_file: "TransSVNet_Temporal_Features_metadata.pkl"
+dataset : Trans_SVNet.trans_svnet_datasets.TransSVNetTransformerPerVideoDataset  
+datamodule: mastoid.mastoid_datamodule.MastoidDataModule
+sequence_length : -1
+num_workers : 8       # for dataloader
+video_index_col_name : "video_index"
+train_video_indexes : [1, 3, 4, 5, 6, 7]
+val_video_indexes : [8, 9, 10]
+test_video_indexes : [12, 13, 14]
+pred_video_indexes : [1, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14]
+original_fps : 1
+train_downsampled_fps : 1
+val_downsampled_fps : 1
+test_downsampled_fps : 1
+# dataset transform
+transform: mastoid.mastoid_transform.MastoidTrasform
+norm_mean: [0.485, 0.456, 0.406]
+norm_std: [0.229, 0.224, 0.225]
+apply_training_aug: False
+# 4. training
+gpus : 0 # all available -1
+early_stopping_metric : val_acc
+early_stopping_metric_mode: max
+batch_size : 1
+learning_rate : 0.001
+min_epochs : 1
+max_epochs : 1
+# resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220408-143902_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel/checkpoints/epoch=15-val_acc=0.67.ckpt
+# prediction_output_path: /home/ubuntu/data/prediction/TransSVNetTemporal/220408-143902_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel

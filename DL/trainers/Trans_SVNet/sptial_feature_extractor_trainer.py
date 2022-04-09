@@ -23,7 +23,7 @@ class SptialFeatureExtractorTrainer(MastoidTrainerBase):
         metadata = pd.DataFrame(columns=["path", "class", "video_index"])
 
         # save prediction vector as pytorch tensor file
-        print("saving predictions vectors...")
+        print("saving predictions features...")
         for batch_pred in predictions:
             for i in range(batch_pred.size(dim=0)):
                 # 1. define output file name corresponding to input file

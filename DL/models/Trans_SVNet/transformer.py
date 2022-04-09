@@ -222,19 +222,18 @@ class Transformer(nn.Module):
             len_q=self.sequence_length)
         self.fc = nn.Linear(self.dim, self.num_classes, bias=False)
 
-    def forward(self, x, long_feature):
-        out_features = x.transpose(1, 2)
+    def forward(self, spatial_features, temporal_features):
         inputs = []
-        for i in range(out_features.size(1)):
+        for i in range(temporal_features.size(1)):
             if i < self.sequence_length-1:
                 input = torch.zeros(
                     (1, self.sequence_length-1-i, self.num_classes)).cuda()
-                input = torch.cat([input, out_features[:, 0:i+1]], dim=1)
+                input = torch.cat([input, temporal_features[:, 0:i+1]], dim=1)
             else:
-                input = out_features[:, i-self.sequence_length+1:i+1]
+                input = temporal_features[:, i-self.sequence_length+1:i+1]
             inputs.append(input)
         inputs = torch.stack(inputs, dim=0).squeeze(1)
-        feas = torch.tanh(self.fc(long_feature).transpose(0, 1))
+        feas = torch.tanh(self.fc(spatial_features).transpose(0, 1))
         output = self.transformer(inputs, feas)
         #output = output.transpose(1,2)
         #output = self.fc(output)
@@ -264,3 +263,4 @@ class Transformer(nn.Module):
         transformer_model_specific_args.add_argument("--n_heads",
                                                      default=8,
                                                      type=int)
+        return parser
