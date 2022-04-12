@@ -214,7 +214,7 @@ class Transformer(nn.Module):
         self.num_f_maps = hprms.mstcn_f_maps  # 32
         self.dim = hprms.mstcn_f_dim  # 2048
         self.num_classes = hprms.out_features  # 3
-        self.sequence_length = hprms.sequence_length
+        self.sequence_length = hprms.transformer_seq_length
 
         self.transformer = Transformer2_3_1(
             d_model=self.num_classes, d_ff=self.num_f_maps, d_k=self.num_f_maps,
@@ -262,5 +262,8 @@ class Transformer(nn.Module):
                                                      type=int)
         transformer_model_specific_args.add_argument("--n_heads",
                                                      default=8,
+                                                     type=int)
+        transformer_model_specific_args.add_argument("--transformer_seq_length",
+                                                     default=30,
                                                      type=int)
         return parser

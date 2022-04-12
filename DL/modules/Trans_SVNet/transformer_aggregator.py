@@ -3,13 +3,16 @@ from torch import optim
 import configargparse
 import torchmetrics
 import torch
+import pickle
+import os
+import numpy as np
 
 
 class TransSVNetTransformerAggregator(LightningModule):
     def __init__(self, hparams, model) -> None:
         super().__init__()
 
-        self.hprams = hparams
+        self.hprms = hparams
         self.model = model
 
         self.ce_loss = torch.nn.CrossEntropyLoss(
@@ -28,10 +31,10 @@ class TransSVNetTransformerAggregator(LightningModule):
         :return: list of optimizers
         """
         optimizer = optim.Adam(self.parameters(),
-                               lr=self.hprams.learning_rate)
+                               lr=self.hprms.learning_rate)
         #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
         return [optimizer]  # , [scheduler]
-    
+
     def forward(self, spatial_features, temporal_features):
         output = self.model.forward(spatial_features, temporal_features)
         return output
@@ -55,7 +58,6 @@ class TransSVNetTransformerAggregator(LightningModule):
                  logger=True, on_epoch=True, on_step=True)
         return {"loss": loss, "train_acc": self.train_acc}
 
-
     def validation_step(self, batch, batch_idx):
         spatial_features, temporal_features, label = batch
         output = self.forward(spatial_features, temporal_features)
@@ -63,7 +65,7 @@ class TransSVNetTransformerAggregator(LightningModule):
         label = label.squeeze()
 
         self.val_acc(output, label)
-        
+
         loss = self.loss(output, label)
         self.log("val_acc", self.val_acc,
                  on_epoch=True, on_step=False)
@@ -84,7 +86,23 @@ class TransSVNetTransformerAggregator(LightningModule):
                  on_epoch=True, on_step=False)
         self.log("test_loss", loss, prog_bar=True,
                  logger=True, on_epoch=True, on_step=False)
-        return {"test_loss": loss}
+        return {"test_loss": loss, "outputs": (np.argmax(output.cpu().numpy(), axis=1), label.cpu().numpy())}
+
+    def test_epoch_end(self, outputs) -> None:
+        output_path = os.path.abspath(
+            self.hprms.test_output_dir)
+        output_path = os.path.join(output_path, self.hprms.name)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        output_list = []
+        for idx in range(len(outputs)):
+            video_idx = self.hprms.test_video_indexes[idx]
+            output_list.append((video_idx, outputs[idx]["outputs"][0], outputs[idx]["outputs"][1]))
+        file_path = os.path.join(
+            output_path, f"Trans_SVNet_outputs.pkl")
+        with open(file_path, 'wb') as f:
+            pickle.dump(output_list, f)
 
     @staticmethod
     def add_specific_args(parser: configargparse.ArgParser):
@@ -92,4 +110,6 @@ class TransSVNetTransformerAggregator(LightningModule):
             title='trans_svnet_sptial_module specific args options')
         trans_svnet_transfomer_module_args.add_argument(
             "--class_weights", type=float, nargs='+', required=True)
+        trans_svnet_transfomer_module_args.add_argument(
+            "--test_output_dir", type=str, required=True)
         return parser

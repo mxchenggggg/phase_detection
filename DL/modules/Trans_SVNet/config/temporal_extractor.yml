@@ -1,7 +1,7 @@
 # 1. model
 model : Trans_SVNet.mstcn.MultiStageModel
-input_height : 224
-input_width : 224
+input_height : 225
+input_width : 400
 out_features : 3
 mstcn_layers : 8
 mstcn_f_maps : 32
@@ -9,19 +9,19 @@ mstcn_f_dim: 2048
 mstcn_stages : 2
 # 2. module
 module : Trans_SVNet.temporal_extractor.TransSVNetTemporalExtractor
-class_weights: [1.0, 1.0, 1.0]
+class_weights: [1.0, 2.019093793836055, 0.6161134683394908]
 # 3. dataset
-data_root : /home/ubuntu/data/prediction/TransSVNetSpatial/220405-164302_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_ResNet50_ResNet50TransSV/
+data_root : /home/ubuntu/data/prediction/TransSVNetSpatial/220411-194403_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_res_net50_ResNet50TransSV/
 metadata_file: "TransSVNet_Spatial_Features_metadata.pkl"
 dataset : Trans_SVNet.trans_svnet_datasets.TransSVNetTemporalPerVideoDataset  
 datamodule: mastoid.mastoid_datamodule.MastoidDataModule
 sequence_length : -1
 num_workers : 8       # for dataloader
 video_index_col_name : "video_index"
-train_video_indexes : [1, 3, 4, 5, 6, 7]
-val_video_indexes : [8, 9, 10]
-test_video_indexes : [12, 13, 14]
-pred_video_indexes : [1, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14]
+train_video_indexes : [1, 3, 4, 6, 7, 10, 11, 12, 14]
+val_video_indexes : [5, 8]
+test_video_indexes : [5, 8]
+pred_video_indexes : [1, 3, 4, 5, 6, 7, 8, 10, 11, 12, 14]
 original_fps : 1
 train_downsampled_fps : 1
 val_downsampled_fps : 1
@@ -37,7 +37,7 @@ early_stopping_metric : val_acc
 early_stopping_metric_mode: max
 batch_size : 1
 learning_rate : 0.00007
-min_epochs : 12
-max_epochs : 16
-resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220408-143902_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel/checkpoints/epoch=15-val_acc=0.67.ckpt
-prediction_output_path: /home/ubuntu/data/prediction/TransSVNetTemporal/220408-143902_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel
+min_epochs : 75
+max_epochs : 100
+resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220411-202450_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel/checkpoints/epoch=99-val_acc=0.65.ckpt
+prediction_output_path: /home/ubuntu/data/prediction/TransSVNetTemporal/220411-202450_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel
