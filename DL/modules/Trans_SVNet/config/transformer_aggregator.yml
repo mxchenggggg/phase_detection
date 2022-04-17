@@ -7,13 +7,13 @@ n_layers : 1
 n_heads : 8
 mstcn_f_maps : 32
 mstcn_f_dim: 2048
-transformer_seq_length: 30
+transformer_seq_length: 10
 # 2. module
 module : Trans_SVNet.transformer_aggregator.TransSVNetTransformerAggregator
 class_weights: [1.0, 2.019093793836055, 0.6161134683394908]
 test_output_dir: /home/ubuntu/data/test/TransSVNet
 # 3. dataset
-data_root : /home/ubuntu/data/prediction/TransSVNetTemporal/220411-202450_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel
+data_root : /home/ubuntu/data/prediction/TransSVNetTemporal/220416-185255_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDatasetSimple_Trans_SVNet_mstcn_MultiStageModel
 metadata_file: "TransSVNet_Temporal_Features_metadata.pkl"
 dataset : Trans_SVNet.trans_svnet_datasets.TransSVNetTransformerPerVideoDataset  
 datamodule: mastoid.mastoid_datamodule.MastoidDataModule
@@ -39,7 +39,7 @@ early_stopping_metric : val_acc
 early_stopping_metric_mode: max
 batch_size : 1
 learning_rate : 0.0001
-min_epochs : 80
-max_epochs : 100
+min_epochs : 5
+max_epochs : 15
 # resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220408-143902_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel/checkpoints/epoch=15-val_acc=0.67.ckpt
 # prediction_output_path: /home/ubuntu/data/prediction/TransSVNetTemporal/220408-143902_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDataset_Trans_SVNet_mstcn_MultiStageModel

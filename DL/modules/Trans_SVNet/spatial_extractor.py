@@ -80,10 +80,9 @@ class TransSVNetSpatialExtractor(LightningModule):
         return {"test_loss": loss}
 
     def predict_step(self, batch, batch_idx):
-        x, _ = batch
+        x, label = batch
         features = self.get_spatial_feature(x)
-        return features
-
+        return features, label
     @staticmethod
     def add_specific_args(parser: configargparse.ArgParser):
         trans_svnet_sptial_module_args = parser.add_argument_group(

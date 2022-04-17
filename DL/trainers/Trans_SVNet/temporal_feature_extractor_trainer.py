@@ -4,33 +4,18 @@ from os import path
 import torch
 import pandas as pd
 import pickle
+import os
 
 
 class TemporalFeatureExtractorTrainer(MastoidTrainerBase):
-    def _get_input_spatial_features_and_labels(self, index: int):
-        dataset = self.datamodule.datasets["pred"]
-        start_index = dataset.valid_seq_start_indexes[index]
-        video_len = dataset.video_lengths[index]
-        spatial_feature_list = []
-        label_list = []
-        for i in range(start_index, start_index+video_len):
-            # load feature
-            path = dataset.df.loc[i, dataset.path_col]
-            spatial_feature_list.append(torch.load(path))
-            # load label
-            label = dataset.df.loc[i, dataset.label_col]
-            label_list.append(torch.tensor(label))
-        return torch.stack(spatial_feature_list), torch.stack(label_list)
-
     def _predict(self) -> None:
         # make prediction
-        trainer = Trainer(
-            gpus=self.hprms.gpus, logger=self.loggers,
-            resume_from_checkpoint=self.hprms.resume_from_checkpoint)
+        trainer = Trainer(gpus=self.hprms.gpus)
 
         # list of prediction for each batch, each batch is a video
         predictions = trainer.predict(
-            self.module, datamodule=self.datamodule)
+            ckpt_path=self.hprms.resume_from_checkpoint,
+            datamodule=self.datamodule, model=self.module)
 
         metadata = pd.DataFrame(columns=["path", "video_index"])
 
@@ -40,7 +25,7 @@ class TemporalFeatureExtractorTrainer(MastoidTrainerBase):
             temporal_features = predictions[idx]
 
             # 2. spatial_features: [video_length, 2048], labels: [video_length, 1]
-            spatial_features, labels = self._get_input_spatial_features_and_labels(
+            spatial_features, labels = self.datamodule.datasets["pred"].__getitem__(
                 idx)
 
             # 3. save features
@@ -53,7 +38,6 @@ class TemporalFeatureExtractorTrainer(MastoidTrainerBase):
                 pickle.dump(data, f)
 
             # 4. add row to metadata
-
             row = {"path": output_file_path, "video_index": video_index}
             metadata = metadata.append(row, ignore_index=True)
 

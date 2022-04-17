@@ -66,8 +66,9 @@ class MastoidTrainerBase:
 
         # 5. loggers
         tb_logger = TensorBoardLogger(self.hprms.output_path, name='tb')
-        wandb_logger = WandbLogger(name=self.hprms.name, project="transsvnet", entity="cis2mastoid")
-        
+        wandb_logger = WandbLogger(
+            name=self.hprms.name, project="transsvnet", entity="cis2mastoid")
+
         self.loggers = [tb_logger, wandb_logger]
 
     def __call__(self) -> None:
@@ -157,7 +158,7 @@ class MastoidTrainerBase:
             output_path = os.path.abspath(
                 self.hprms.prediction_output_path)
             if not os.path.exists(output_path):
-                os.makedirs(output_path)
+                os.makedirs(output_path)    
         else:
             # training mode
             output_path = os.path.join(

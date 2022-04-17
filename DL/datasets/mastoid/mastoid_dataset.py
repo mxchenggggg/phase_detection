@@ -123,8 +123,9 @@ class MastoidPerFrameRawImgDataset(MastoidDatasetBase):
         return img.type(torch.FloatTensor)
 
     def load_label(self, index: int) -> torch.Tensor:
-        return torch.tensor(
-            int(self.df.iloc[index, self.df.columns.get_loc(self.label_col)]))
+        label_index = self.valid_seq_start_indexes[index]
+        label = int(self.df.loc[label_index, self.label_col])
+        return torch.tensor(label)
 
     def __getitem__(self, index):
         return self.load_input_file(index), self.load_label(index)

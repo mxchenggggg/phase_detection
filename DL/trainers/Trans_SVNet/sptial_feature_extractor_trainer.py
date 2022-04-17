@@ -4,54 +4,58 @@ from os import path
 import os
 import torch
 import pandas as pd
+import numpy as np
+import pickle
 
 
 class SptialFeatureExtractorTrainer(MastoidTrainerBase):
     def _predict(self) -> None:
         # make prediction
-        trainer = Trainer(
-            gpus=self.hprms.gpus, logger=self.loggers,
-            resume_from_checkpoint=self.hprms.resume_from_checkpoint)
+        trainer = Trainer(gpus=self.hprms.gpus)
+
         # list of prediction for each batch
-        predictions = trainer.predict(
-            self.module, datamodule=self.datamodule)
+        batch_predictions = trainer.predict(
+            ckpt_path=self.hprms.resume_from_checkpoint,
+            datamodule=self.datamodule, model=self.module)
 
-        # prediction feature vector index
-        index = 0
+        # all predictions
+        all_predictions = []
+        all_labels = []
+        for preds, ls in batch_predictions:
+            all_predictions.append(preds)
+            all_labels.append(ls)
+        all_predictions = torch.vstack(all_predictions)
+        all_labels = torch.cat(all_labels)
 
-        # metadata for predicted features, useful when using features as inputs for other networks
-        metadata = pd.DataFrame(columns=["path", "class", "video_index"])
+        # outptu metadata file
+        metadata = pd.DataFrame(columns=["path", "video_index"])
 
-        # save prediction vector as pytorch tensor file
-        print("saving predictions features...")
-        for batch_pred in predictions:
-            for i in range(batch_pred.size(dim=0)):
-                # 1. define output file name corresponding to input file
-                input_file_path = self.datamodule.metadata["pred"].loc[index,
-                                                                       self.datamodule.path_col]
-                output_file_name = 'spatial_' + path.splitext(
-                    path.basename(input_file_path))[0]
+        video_idxes = self.datamodule.vid_idxes["pred"]
+        df = self.datamodule.metadata["pred"]
+        print("saving prediction features...")
+        for video_idx in video_idxes:
+            # load features and labels for current video
+            idxes = df.index[df[self.datamodule.video_index_col] == video_idx]
 
-                # 2. save tensor file
-                output_file_path = path.join(
-                    self.hprms.output_path, output_file_name + '.pt')
-                pred_tensor = batch_pred[i, :]
-                torch.save(pred_tensor, output_file_path)
+            spatial_features = all_predictions[idxes, :].numpy().astype(
+                np.float64)
+            labels = all_labels[idxes].numpy()
 
-                # 3. load metadata associated with input file
-                phase_label = self.datamodule.metadata["pred"].loc[index,
-                                                                   self.datamodule.label_col]
-                video_index = self.datamodule.metadata["pred"].loc[index,
-                                                                   self.datamodule.video_index_col]
+            labels_from_df = df.loc[idxes, self.datamodule.label_col].values
+            assert np.array_equal(
+                labels, labels_from_df), "wrong labels in predictions!"
 
-                # 4. add row to metadata for the output feature tensor
-                row = {
-                    "path": output_file_path, "class": phase_label,
-                    "video_index": video_index}
-                metadata = metadata.append(row, ignore_index=True)
+            # save features and labels
+            data = {"spatial_features": spatial_features,
+                    "labels": labels}
+            output_file_path = path.join(
+                self.hprms.output_path,
+                f'V{video_idx:02d}_spatial_features.pkl')
+            with open(output_file_path, "wb") as f:
+                pickle.dump(data, f)
 
-                # 5. update index
-                index += 1
+            row = {"path": output_file_path, "video_index": video_idx}
+            metadata = metadata.append(row, ignore_index=True)
 
         # save metadata file
         metadata_file_name = "TransSVNet_Spatial_Features_metadata"

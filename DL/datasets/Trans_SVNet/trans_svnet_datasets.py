@@ -2,6 +2,8 @@ from datasets.mastoid.mastoid_dataset import MastoidDatasetBase
 import torch
 from typing import Any
 import pickle
+import numpy as np
+
 
 class TransSVNetTemporalPerVideoDataset(MastoidDatasetBase):
     def __getitem__(self, index: int) -> Any:
@@ -17,6 +19,18 @@ class TransSVNetTemporalPerVideoDataset(MastoidDatasetBase):
             label = self.df.loc[i, self.label_col]
             label_list.append(torch.tensor(label))
         return torch.stack(spatial_feature_list), torch.stack(label_list)
+
+
+class TransSVNetTemporalPerVideoDatasetSimple(MastoidDatasetBase):
+    def __getitem__(self, index: int) -> Any:
+        path = self.df.loc[index, self.path_col]
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+
+        return torch.from_numpy(
+            data["spatial_features"]).type(torch.FloatTensor), torch.from_numpy(
+            data["labels"].astype(int)).type(torch.LongTensor)
+
 
 class TransSVNetTransformerPerVideoDataset(MastoidDatasetBase):
     def __getitem__(self, index: int) -> Any:

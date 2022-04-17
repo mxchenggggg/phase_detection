@@ -1,41 +1,36 @@
-import torch
 import torch.nn as nn
 from torchvision import models
 
-class ResNet50TransSV(torch.nn.Module):
-    def __init__(self, hprms):
-        self.hprms = hprms
+
+class ResNet50TransSV(nn.Module):
+    def __init__(self, hparams):
         super(ResNet50TransSV, self).__init__()
-        resnet = models.resnet50(pretrained=True)
-        self.share = torch.nn.Sequential()
-        self.share.add_module("conv1", resnet.conv1)
-        self.share.add_module("bn1", resnet.bn1)
-        self.share.add_module("relu", resnet.relu)
-        self.share.add_module("maxpool", resnet.maxpool)
-        self.share.add_module("layer1", resnet.layer1)
-        self.share.add_module("layer2", resnet.layer2)
-        self.share.add_module("layer3", resnet.layer3)
-        self.share.add_module("layer4", resnet.layer4)
-        self.share.add_module("avgpool", resnet.avgpool)
-        self.fc = nn.Sequential(nn.Linear(2048, 512),
-                                nn.ReLU(),
-                                nn.Linear(512, 3))
+        self.model = models.resnet50(pretrained=True)
+        # replace final layer with number of labels
+        self.model.fc = Identity()
+        self.fc_phase = nn.Linear(2048, hparams.out_features)
 
     def forward(self, x):
-        # x = x.view(-1, 3, self.hprms.input_width, self.hprms.input_height)
-        x = self.share.forward(x)
-        x = x.view(-1, 2048)
-        y = self.fc(x)
-        return y
+        out_stem = self.model(x)
+        phase = self.fc_phase(out_stem)
+        return phase
 
     def get_spatial_feature(self, x):
-        # x = x.view(-1, 3, self.hprms.input_width, self.hprms.input_height)
-        x = self.share.forward(x)
+        x = self.model.forward(x)
         x = x.view(-1, 2048)
         return x
 
     @staticmethod
     def add_specific_args(parser):  # pragma: no cover
-        resnet50_trans_svnet_args = parser.add_argument_group(
-            title='resnet50_trans_svnet specific args options')
+        resnet50model_specific_args = parser.add_argument_group(
+            title='resnet50model specific args options')
         return parser
+
+
+#### Identity Layer ####
+class Identity(nn.Module):
+    def __init__(self):
+        super(Identity, self).__init__()
+
+    def forward(self, x):
+        return x

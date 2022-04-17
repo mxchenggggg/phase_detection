@@ -66,7 +66,6 @@ class MastoidDataModule(LightningDataModule):
         # split and downsample metadata
         for split in ["train", "val", "test", "pred"]:
             self.metadata[split] = self.__split_metadata_donwsampled(split)
-            self.metadata[split].reset_index(drop=True, inplace=True)
 
     def setup(self, stage: Optional[str] = None) -> None:
         """ Set up datasets for traning, validation, testing and prediction
@@ -77,7 +76,7 @@ class MastoidDataModule(LightningDataModule):
                 self.hprms, self.metadata[split],
                 self.seq_len, self.vid_idxes[split],
                 transform=self.transform.get_transform(split))
-            
+            print(f"{split} dataset length: {self.datasets[split].__len__()}")
 
     def train_dataloader(self) -> DataLoader:
         return self.__get_dataloader("train")
@@ -115,7 +114,13 @@ class MastoidDataModule(LightningDataModule):
 
         if 0 < self.downsampled_fps[split] < self.original_fps:
             factor = int(self.original_fps / self.downsampled_fps[split])
-            df = df.iloc[::factor]
+            downsampled_df = pd.DataFrame(columns=list(df.columns.values))
+            for video_idx in self.vid_idxes[split]:
+                video_frames = df.loc[df[self.video_index_col]
+                                      == video_idx][::factor]
+                downsampled_df = pd.concat([downsampled_df, video_frames])
+            df = downsampled_df
+        df.reset_index(drop=True, inplace=True)
         return df
 
     @staticmethod
