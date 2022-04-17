@@ -11,7 +11,7 @@ import pickle
 class SptialFeatureExtractorTrainer(MastoidTrainerBase):
     def _predict(self) -> None:
         # make prediction
-        trainer = Trainer(gpus=self.hprms.gpus)
+        trainer = Trainer(gpus=self.hprms.gpus, logger=self.loggers,)
 
         # list of prediction for each batch
         batch_predictions = trainer.predict(

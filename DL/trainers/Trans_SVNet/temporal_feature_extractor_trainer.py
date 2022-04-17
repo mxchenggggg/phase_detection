@@ -10,7 +10,7 @@ import os
 class TemporalFeatureExtractorTrainer(MastoidTrainerBase):
     def _predict(self) -> None:
         # make prediction
-        trainer = Trainer(gpus=self.hprms.gpus)
+        trainer = Trainer(gpus=self.hprms.gpus, logger=self.loggers,)
 
         # list of prediction for each batch, each batch is a video
         predictions = trainer.predict(
