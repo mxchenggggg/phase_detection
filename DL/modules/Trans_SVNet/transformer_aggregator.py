@@ -1,7 +1,7 @@
 from pytorch_lightning import LightningModule
 from torch import optim
 import configargparse
-import torchmetrics
+from torchmetrics import Accuracy, Precision, Recall
 import torch
 import pickle
 import os
@@ -21,9 +21,9 @@ class TransSVNetTransformerAggregator(LightningModule):
         self.init_metrics()
 
     def init_metrics(self):
-        self.train_acc = torchmetrics.Accuracy()
-        self.val_acc = torchmetrics.Accuracy()
-        self.test_acc = torchmetrics.Accuracy()
+        self.train_acc = Accuracy()
+        self.val_acc = Accuracy()
+        self.test_acc = Accuracy()
 
     def configure_optimizers(self):
         """
@@ -53,9 +53,10 @@ class TransSVNetTransformerAggregator(LightningModule):
 
         loss = self.loss(output, label)
         self.log("train_acc", self.train_acc,
-                 on_epoch=True, on_step=True)
-        self.log("loss", loss, prog_bar=True,
-                 logger=True, on_epoch=True, on_step=True)
+                 on_epoch=True, on_step=True, prog_bar=True)
+        self.log("loss", loss,
+                 on_epoch=True, on_step=True, prog_bar=True)
+        self.log("training performance", {"loss": loss, "train_acc": self.train_acc}, on_epoch=True)
         return {"loss": loss, "train_acc": self.train_acc}
 
     def validation_step(self, batch, batch_idx):
@@ -98,7 +99,9 @@ class TransSVNetTransformerAggregator(LightningModule):
         output_list = []
         for idx in range(len(outputs)):
             video_idx = self.hprms.test_video_indexes[idx]
-            output_list.append((video_idx, outputs[idx]["outputs"][0], outputs[idx]["outputs"][1]))
+            output_list.append(
+                (video_idx, outputs[idx]["outputs"][0],
+                 outputs[idx]["outputs"][1]))
         file_path = os.path.join(
             output_path, f"Trans_SVNet_outputs.pkl")
         with open(file_path, 'wb') as f:

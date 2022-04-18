@@ -59,7 +59,7 @@ class MastoidTrainerBase:
         self.parser, self.hprms = build_configargparser(self.parser)
 
         # 3. load hyperparameters, classes from config file
-        self.hprms, self.model, self.module, self.datamodule, self.transform = self._get_classes_and_parse_args()
+        self._get_classes_and_parse_args()
 
         # 4. setup output path
         self.hprms.output_path, self.hprms.name = self._get_output_path_and_exp_name()
@@ -92,7 +92,8 @@ class MastoidTrainerBase:
             max_epochs=self.hprms.max_epochs,
             callbacks=[self.checkpoint_callback,
                        self.early_stop_callback,
-                       ModelSummary(max_depth=-1)],
+                       ModelSummary(max_depth=-1)
+                       ],
             resume_from_checkpoint=self.hprms.resume_from_checkpoint)
         trainer.fit(self.module, datamodule=self.datamodule)
         print(
@@ -106,18 +107,27 @@ class MastoidTrainerBase:
         """ Prediction
             Dereived class should implement this 
         """
-        warnings.warn("Warinig: No prediction logic implemented")
-        pass
+        # warnings.warn("Warinig: No prediction logic implemented")
+        # make prediction
+        trainer = Trainer(
+            gpus=self.hprms.gpus, logger=self.loggers)
+
+        # list of prediction for each batch
+        batch_predictions = trainer.predict(
+            ckpt_path=self.hprms.resume_from_checkpoint,
+            datamodule=self.datamodule, model=self.module)
 
     def _get_classes_and_parse_args(self) -> Any:
         """Get hyperparameters, model, module, datamodule and transform from config file
         """
         # get Classes
-        dirs = ["modules", "models", "datasets", "datasets", "datasets"]
-        names = ["module", "model", "dataset", "datamodule", "transform"]
+        dirs = ["modules", "modules", "modules", "models",
+                "datasets", "datasets", "datasets"]
+        names = ["module", "metrics_callback", "predictions_callback", "model",
+                 "dataset", "datamodule", "transform"]
         for i in range(len(names)):
             path = f"{dirs[i]}.{getattr(self.hprms, names[i])}"
-            attr_name = f"{names[i].capitalize()}Class"
+            attr_name = f"{''.join(x.capitalize()  for x in names[i].split('_'))}Class"
             setattr(self, attr_name, get_class_by_path(path))
             # add specific arguments to parser
             self.parser = getattr(
@@ -125,16 +135,17 @@ class MastoidTrainerBase:
                 self.parser)
 
         # parse arguments and print summary
-        hprms = self.parser.parse_args()
-        argparse_summary(hprms, self.parser)
+        self.hprms = self.parser.parse_args()
+        argparse_summary(self.hprms, self.parser)
 
         # get objects
-        transform = self.TransformClass(hprms)
-        datamodule = self.DatamoduleClass(hprms, self.DatasetClass, transform)
-        model = self.ModelClass(hprms)
-        module = self.ModuleClass(hprms, model)
-
-        return hprms, model, module, datamodule, transform
+        self.transform = self.TransformClass(self.hprms)
+        self.datamodule = self.DatamoduleClass(
+            self.hprms, self.DatasetClass, self.transform)
+        self.model = self.ModelClass(self.hprms)
+        self.module = self.ModuleClass(
+            self.hprms, self.model, self.datamodule, self.MetricsCallbackClass,
+            self.PredictionsCallbackClass)
 
     def _get_output_path_and_exp_name(self) -> Tuple[str, str]:
         """ Get output path and experiment name
@@ -158,7 +169,7 @@ class MastoidTrainerBase:
             output_path = os.path.abspath(
                 self.hprms.prediction_output_path)
             if not os.path.exists(output_path):
-                os.makedirs(output_path)    
+                os.makedirs(output_path)
         else:
             # training mode
             output_path = os.path.join(

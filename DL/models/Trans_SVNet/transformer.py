@@ -222,7 +222,8 @@ class Transformer(nn.Module):
             len_q=self.sequence_length)
         self.fc = nn.Linear(self.dim, self.num_classes, bias=False)
 
-    def forward(self, spatial_features, temporal_features):
+    def forward(self, batch):
+        spatial_features, temporal_features, targets = batch
         inputs = []
         for i in range(temporal_features.size(1)):
             if i < self.sequence_length-1:
@@ -234,10 +235,8 @@ class Transformer(nn.Module):
             inputs.append(input)
         inputs = torch.stack(inputs, dim=0).squeeze(1)
         feas = torch.tanh(self.fc(spatial_features).transpose(0, 1))
-        output = self.transformer(inputs, feas)
-        #output = output.transpose(1,2)
-        #output = self.fc(output)
-        return output
+        preds = self.transformer(inputs, feas)
+        return preds, targets
 
     @staticmethod
     def add_specific_args(parser):  # pragma: no cover

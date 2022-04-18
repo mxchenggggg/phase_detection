@@ -12,6 +12,9 @@ def build_configargparser(parser: configargparse.ArgParser):
     """ 2. config module """
     module_group = parser.add_argument_group(title='Module options')
     module_group.add_argument("--module", type=str, required=True)
+    module_group.add_argument("--metrics_callback", type=str, required=True)
+    module_group.add_argument("--predictions_callback", type=str, required=True)
+
 
     """ 3. config dataset """
     dataset_group = parser.add_argument_group(title='Dataset options')
