@@ -12,12 +12,11 @@ transformer_seq_length: 10
 # module : Trans_SVNet.transformer_aggregator.TransSVNetTransformerAggregator
 module : mastoid.mastoid_module_base.MastoidModuleBase
 metrics_callback : mastoid.mastoid_metrics_callback_base.MastoidMetricsCallbackBase
-predictions_callback : Trans_SVNet.transformer_aggregator_dev.TransSVNetTransAggPredClbk
+predictions_callback : mastoid.mastoid_callbacks.MastoidPerVideoDatasetPredClbk
 class_weights: [1.0, 2.019093793836055, 0.6161134683394908]
 class_names: ["expose", "antrum", "facial"]
-test_output_dir: /home/ubuntu/data/test/TransSVNet
 # 3. dataset
-data_root : /home/ubuntu/data/prediction/TransSVNetTemporal/220416-185255_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDatasetSimple_Trans_SVNet_mstcn_MultiStageModel
+data_root : /home/ubuntu/data/prediction/TransSVNetTemporal/220418-154650_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDatasetSimple_Trans_SVNet_mstcn_MultiStageModel
 metadata_file: "TransSVNet_Temporal_Features_metadata.pkl"
 dataset : Trans_SVNet.trans_svnet_datasets.TransSVNetTransformerPerVideoDataset  
 datamodule: mastoid.mastoid_datamodule.MastoidDataModule
@@ -38,12 +37,12 @@ norm_mean: [0.485, 0.456, 0.406]
 norm_std: [0.229, 0.224, 0.225]
 apply_training_aug: False
 # 4. training
-gpus : 0 # all available -1
+gpus : 1 # all available -1
 early_stopping_metric : val_acc
 early_stopping_metric_mode: max
 batch_size : 1
 learning_rate : 0.0001
-min_epochs : 5
-max_epochs : 10
-resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220416-231223_TransSVNetTransformerAggregator_TransSVNetTransformerPerVideoDataset_Trans_SVNet_transformer_Transformer/checkpoints/epoch=2-val_acc=0.86.ckpt
-prediction_output_path: /home/ubuntu/data/prediction/TransSVNetTransformer/220416-231223_TransSVNetTransformerAggregator_TransSVNetTransformerPerVideoDataset_Trans_SVNet_transformer_Transformer
+min_epochs : 50
+max_epochs : 100
+resume_from_checkpoint : /home/ubuntu/phase_detection/DL/logs/220418-162158_MastoidModuleBase_TransSVNetTransformerPerVideoDataset_Trans_SVNet_transformer_Transformer/checkpoints/epoch=29-val_acc=0.86.ckpt         
+prediction_output_path: /home/ubuntu/data/prediction/TransSVNetTransformer/220418-162158_MastoidModuleBase_TransSVNetTransformerPerVideoDataset_Trans_SVNet_transformer_Transformer

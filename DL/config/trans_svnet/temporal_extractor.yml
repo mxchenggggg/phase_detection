@@ -8,11 +8,13 @@ mstcn_f_maps : 32
 mstcn_f_dim: 2048
 mstcn_stages : 2
 # 2. module
-module : Trans_SVNet.temporal_extractor.TransSVNetTemporalExtractor
+module :  Trans_SVNet.temporal_extractor.TransSVNetTemporalExtractor
+metrics_callback : mastoid.mastoid_metrics_callback_base.MastoidMetricsCallbackBase
+predictions_callback : Trans_SVNet.temporal_extractor.TransSVNetTempExtClbk 
 class_weights: [1.0, 2.019093793836055, 0.6161134683394908]
+class_names: ["expose", "antrum", "facial"]
 # 3. dataset
-# data_root: /home/ubuntu/data/prediction/TransSVNetSpatial/220416-121748_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_res_net50_ResNet50TeCNO
-data_root: /home/ubuntu/data/prediction/TransSVNetSpatial/pred_dev
+data_root: /home/ubuntu/data/prediction/TransSVNetSpatial/220418-120028_MastoidModuleBase_MastoidPerFrameRawImgDataset_Trans_SVNet_res_net50_ResNet50TransSV
 metadata_file: "TransSVNet_Spatial_Features_metadata.pkl"
 dataset : Trans_SVNet.trans_svnet_datasets.TransSVNetTemporalPerVideoDatasetSimple
 datamodule: mastoid.mastoid_datamodule.MastoidDataModule
@@ -38,7 +40,7 @@ early_stopping_metric : val_acc
 early_stopping_metric_mode: max
 batch_size : 1
 learning_rate : 0.00007
-min_epochs : 80
+min_epochs : 50
 max_epochs : 100
-resume_from_checkpoint: /home/ubuntu/phase_detection/DL/logs/220416-185255_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDatasetSimple_Trans_SVNet_mstcn_MultiStageModel/checkpoints/epoch=99-val_acc=0.78.ckpt
-prediction_output_path: /home/ubuntu/data/prediction/TransSVNetTemporal/220416-185255_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDatasetSimple_Trans_SVNet_mstcn_MultiStageModel
+resume_from_checkpoint: /home/ubuntu/phase_detection/DL/logs/220418-154650_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDatasetSimple_Trans_SVNet_mstcn_MultiStageModel/checkpoints/epoch=46-val_acc=0.86.ckpt
+prediction_output_path: /home/ubuntu/data/prediction/TransSVNetTemporal/220418-154650_TransSVNetTemporalExtractor_TransSVNetTemporalPerVideoDatasetSimple_Trans_SVNet_mstcn_MultiStageModel

@@ -10,10 +10,11 @@ class ResNet50TransSV(nn.Module):
         self.model.fc = Identity()
         self.fc_phase = nn.Linear(2048, hparams.out_features)
 
-    def forward(self, x):
-        out_stem = self.model(x)
-        phase = self.fc_phase(out_stem)
-        return phase
+    def forward(self, batch):
+        x, targets = batch
+        spatial_features = self.model(x)
+        preds = self.fc_phase(spatial_features)
+        return {"preds": preds, "targets": targets, "spatial_features": spatial_features}
 
     def get_spatial_feature(self, x):
         x = self.model.forward(x)

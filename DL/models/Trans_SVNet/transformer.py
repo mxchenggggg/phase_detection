@@ -236,7 +236,7 @@ class Transformer(nn.Module):
         inputs = torch.stack(inputs, dim=0).squeeze(1)
         feas = torch.tanh(self.fc(spatial_features).transpose(0, 1))
         preds = self.transformer(inputs, feas)
-        return preds, targets
+        return {"preds": preds, "targets": targets}
 
     @staticmethod
     def add_specific_args(parser):  # pragma: no cover

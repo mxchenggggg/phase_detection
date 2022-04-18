@@ -34,14 +34,31 @@ class MultiStageModel(nn.Module):
         ])
         self.smoothing = False
 
-    def forward(self, x):
-        out_classes = self.stage1(x)
-        outputs_classes = out_classes.unsqueeze(0)
+    def forward(self, batch):
+        spatial_features, targets = batch
+        # transpose for 1D convolution
+        # (batch_size, spatial_feature_dim, vid_len)
+        spatial_features = spatial_features.transpose(2, 1)
+
+        # (batch_size, num_classes, vid_len)
+        prev_stage_preds = self.stage1(spatial_features)
+        stage_preds = prev_stage_preds.unsqueeze(0)
         for s in self.stages:
-            out_classes = s(F.softmax(out_classes, dim=1))
-            outputs_classes = torch.cat(
-                (outputs_classes, out_classes.unsqueeze(0)), dim=0)
-        return outputs_classes
+            preds = s(F.softmax(prev_stage_preds, dim=1))
+            stage_preds = torch.cat([stage_preds, preds.unsqueeze(0)], dim=0)
+
+        # stage_preds: (num_stages, batch_size, num_classes, vid_len)
+        stage_preds = F.softmax(stage_preds, dim = 2)
+        # stage_preds: (num_stages, batch_size, vid_len, num_classes)
+        stage_preds = stage_preds.transpose(2, 3)
+        
+        # use last stage outputs as preds
+        outputs = {
+            "preds": stage_preds[-1],
+            "targets": targets, "spatial_features": spatial_features.transpose(1, 2).squeeze(),
+            "stage_preds": stage_preds}
+        return outputs
+
 
     @staticmethod
     def add_specific_args(parser):  # pragma: no cover

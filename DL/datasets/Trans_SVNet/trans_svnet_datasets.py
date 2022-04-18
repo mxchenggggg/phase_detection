@@ -29,7 +29,7 @@ class TransSVNetTemporalPerVideoDatasetSimple(MastoidDatasetBase):
 
         return torch.from_numpy(
             data["spatial_features"]).type(torch.FloatTensor), torch.from_numpy(
-            data["labels"].astype(int)).type(torch.LongTensor)
+            data["targets"].astype(int)).type(torch.LongTensor)
 
 
 class TransSVNetTransformerPerVideoDataset(MastoidDatasetBase):
@@ -37,4 +37,10 @@ class TransSVNetTransformerPerVideoDataset(MastoidDatasetBase):
         path = self.df.loc[index, self.path_col]
         with open(path, "rb") as f:
             data = pickle.load(f)
-        return data["spatial_features"], data["temporal_features"], data["labels"]
+        return torch.from_numpy(
+            data["spatial_features"]).type(
+            torch.FloatTensor), torch.from_numpy(
+            data["temporal_features"]).type(
+            torch.FloatTensor), torch.from_numpy(
+            data["targets"]).type(
+            torch.LongTensor)

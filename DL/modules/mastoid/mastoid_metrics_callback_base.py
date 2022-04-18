@@ -2,6 +2,7 @@ from torchmetrics import Accuracy, Precision, Recall
 from typing import Dict, Any, Optional, List
 import pytorch_lightning as pl
 import configargparse
+import torch.nn.functional as F
 
 
 class MastoidMetricsCallbackBase(pl.Callback):
@@ -17,6 +18,7 @@ class MastoidMetricsCallbackBase(pl.Callback):
         get_metric_classes to add additional metrics. Additional metrics will be logged
         during training/validation/testing as default ones.
     """
+
     def __init__(self, hparams) -> None:
         self.hprms = hparams
 
@@ -60,8 +62,10 @@ class MastoidMetricsCallbackBase(pl.Callback):
             Dict: preformance dictionary
         """
         performace_dict = {}
+        preds = F.softmax(outputs["preds"], dim=1)
+        targets = outputs["targets"]
         for name in getattr(module, f'{stage}_metric_names'):
-            getattr(module, name)(outputs["preds"], outputs["targets"])
+            getattr(module, name)(preds,targets)
             performace_dict[name] = getattr(module, name)
         performace_dict[f"{stage}_loss"] = outputs["loss"]
         module.log_dict(performace_dict, on_epoch=True)

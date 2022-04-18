@@ -13,7 +13,6 @@ from utils.utils import (
 )
 
 from typing import Optional, Tuple, Any
-import warnings
 
 
 class MastoidTrainerBase:
@@ -26,19 +25,17 @@ class MastoidTrainerBase:
             3. Interface for training and prediction
 
         Usage:
-            Derive a trainer class from this base class (e.g. MyTrainer.py):
-                class MyTrainer(MastoidTrainerBase):
-                    def _predict(self):
-                        # prediction logic
-                        ...
-
+            Derive a trainer class from this base class (e.g. MyTrainer.py)
+            or use this base class if no additional functionality needed:
+                
                 trainer = MyTrainer(default_config_file="DEFAULT_CONFIG_FILE_PATH")
                 trainer() # perform training or predicition
 
             In CML, run:
                 MyTrainer.py [-c|--config CONFIG_FILE_PATH] [-p|--predict] 
             Use flag -p or --predict for prediction mode;
-            _predict must be implemented for predicitno mode.
+
+            Prediction logics is handle by callbacks; refer to modules for more details
     """
 
     def __init__(self, default_config_file:  Optional[str] = None) -> None:
@@ -62,10 +59,10 @@ class MastoidTrainerBase:
         self._get_classes_and_parse_args()
 
         # 4. setup output path
-        self.hprms.output_path, self.hprms.name = self._get_output_path_and_exp_name()
+        self.hprms.log_output_path, self.hprms.pred_output_path, self.hprms.name = self._get_output_path_and_exp_name()
 
         # 5. loggers
-        tb_logger = TensorBoardLogger(self.hprms.output_path, name='tb')
+        tb_logger = TensorBoardLogger(self.hprms.log_output_path, name='tb')
         wandb_logger = WandbLogger(
             name=self.hprms.name, project="transsvnet", entity="cis2mastoid")
 
@@ -94,7 +91,9 @@ class MastoidTrainerBase:
                        self.early_stop_callback,
                        ModelSummary(max_depth=-1)
                        ],
-            resume_from_checkpoint=self.hprms.resume_from_checkpoint)
+            resume_from_checkpoint=self.hprms.resume_from_checkpoint,
+            num_sanity_val_steps=self.hprms.num_sanity_val_steps,
+            log_every_n_steps=self.hprms.log_every_n_steps)
         trainer.fit(self.module, datamodule=self.datamodule)
         print(
             f"Best: {self.checkpoint_callback.best_model_score} | monitor: {self.checkpoint_callback.monitor} | path: {self.checkpoint_callback.best_model_path}"
@@ -105,15 +104,11 @@ class MastoidTrainerBase:
 
     def _predict(self) -> None:
         """ Prediction
-            Dereived class should implement this 
         """
-        # warnings.warn("Warinig: No prediction logic implemented")
-        # make prediction
         trainer = Trainer(
-            gpus=self.hprms.gpus, logger=self.loggers)
-
-        # list of prediction for each batch
-        batch_predictions = trainer.predict(
+            gpus=self.hprms.gpus, logger=False)
+        
+        trainer.predict(
             ckpt_path=self.hprms.resume_from_checkpoint,
             datamodule=self.datamodule, model=self.module)
 
@@ -164,19 +159,16 @@ class MastoidTrainerBase:
         exp_name = date_str + exp_name
 
         # 2. output path
-        if self.hprms.predict:
-            # prediction mode
-            output_path = os.path.abspath(
-                self.hprms.prediction_output_path)
-            if not os.path.exists(output_path):
-                os.makedirs(output_path)
-        else:
-            # training mode
-            output_path = os.path.join(
-                os.path.abspath(self.hprms.logs_checkpoints_output_path),
-                exp_name)
+        pred_output_path = os.path.abspath(
+            self.hprms.prediction_output_path)
+        if not os.path.exists(pred_output_path):
+            os.makedirs(pred_output_path)
 
-        return output_path, exp_name
+        log_output_path = os.path.join(
+            os.path.abspath(self.hprms.logs_checkpoints_output_path),
+            exp_name)
+
+        return log_output_path, pred_output_path, exp_name
 
     def _get_checkpoint_callback(self) -> ModelCheckpoint:
         """ get checkpoint callback
@@ -185,7 +177,7 @@ class MastoidTrainerBase:
             ModelCheckpoint: checkpoint callback
         """
         return ModelCheckpoint(
-            dirpath=f"{self.hprms.output_path}/checkpoints/",
+            dirpath=f"{self.hprms.log_output_path}/checkpoints/",
             save_top_k=self.hprms.save_top_k,
             verbose=True,
             monitor=self.hprms.early_stopping_metric,

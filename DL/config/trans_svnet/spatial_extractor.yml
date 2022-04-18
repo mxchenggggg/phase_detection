@@ -1,11 +1,14 @@
 # 1. model
-model : Trans_SVNet.res_net50.ResNet50TeCNO
+model : Trans_SVNet.res_net50.ResNet50TransSV
 input_height : 225
 input_width : 400
 out_features : 3
 # 2. module
-module : Trans_SVNet.spatial_extractor.TransSVNetSpatialExtractor
+module : mastoid.mastoid_module_base.MastoidModuleBase
+metrics_callback : mastoid.mastoid_metrics_callback_base.MastoidMetricsCallbackBase
+predictions_callback : Trans_SVNet.spatial_extractor.TransSVNetSpatExtClbk
 class_weights: [1.0, 2.019093793836055, 0.6161134683394908]
+class_names: ["expose", "antrum", "facial"]
 # 3. dataset
 data_root : /home/ubuntu/data/mastoid_dataset_400225
 metadata_file: "mastoid_split_250px_30fps.pkl"
@@ -34,7 +37,7 @@ early_stopping_metric : val_acc
 early_stopping_metric_mode: max
 batch_size : 80
 learning_rate : 0.0005
-min_epochs : 5
-max_epochs : 5
-# resume_from_checkpoint: /home/ubuntu/phase_detection/DL/logs/220416-153100_TransSVNetSpatialExtractor_MastoidPerFrameRawImgDataset_Trans_SVNet_res_net50_ResNet50TeCNO/checkpoints/epoch=1-val_acc=0.82.ckpt
-# prediction_output_path: /home/ubuntu/data/prediction/TransSVNetSpatial/pred_dev
+min_epochs : 3
+max_epochs : 6
+resume_from_checkpoint: /home/ubuntu/phase_detection/DL/logs/220418-120028_MastoidModuleBase_MastoidPerFrameRawImgDataset_Trans_SVNet_res_net50_ResNet50TransSV/checkpoints/epoch=2-val_acc=0.83.ckpt
+prediction_output_path: /home/ubuntu/data/prediction/TransSVNetSpatial/220418-120028_MastoidModuleBase_MastoidPerFrameRawImgDataset_Trans_SVNet_res_net50_ResNet50TransSV

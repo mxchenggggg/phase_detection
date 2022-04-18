@@ -7,6 +7,11 @@ from modules.mastoid.mastoid_metrics_callback_base import MastoidMetricsCallback
 
 
 class MastoidModuleBase(LightningModule):
+    """ Mastoid module base class
+
+    Args:
+        LightningModule (_type_): _description_
+    """
     def __init__(self, hparams, model: torch.nn.modules,
                  datamodule: MastoidDataModule, metrics_callback_class,
                  predictions_callback_class) -> None:
@@ -77,27 +82,31 @@ class MastoidModuleBase(LightningModule):
         # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
         return [optimizer]  # , [scheduler]
 
-    def forward(self, batch: torch.Tensor):
+    def forward(self, batch: torch.Tensor) -> Dict:
         """ forward
 
         Args:
             batch (torch.Tensor): batch of data
 
         Returns:
-            tuple(torch.Tensor, torch.Tensor): (preds, targets)
-                forward method of the model should return preds and targets as a tuple
+            {"preds": torch.Tensor, "targets": torch.Tensor ...}
+            model.forward should return a dictionary containing at least preds and targets
         """
-        preds, targets = self.model.forward(batch)
-        preds = preds.squeeze()
-        targets = targets.squeeze()
-        return preds, targets
+        outputs = self.model.forward(batch)
+        outputs["preds"] = outputs["preds"].squeeze()
+        outputs["targets"] = outputs["targets"].squeeze()
+        return outputs
 
-    def loss(self, preds, targets):
-        loss = self.ce_loss(preds, targets)
+    def loss(self, fwd_outputs):
+        loss = self.ce_loss(fwd_outputs["preds"], fwd_outputs["targets"])
         return loss
 
     def training_step(self, batch, batch_idx):
-        return self._forward_and_loss(batch, batch_idx)
+        outputs = self._forward_and_loss(batch, batch_idx)
+        for key, val in outputs.items():
+            if key != "loss":
+                outputs[key] = val.detach()
+        return outputs
 
     def validation_step(self, batch, batch_idx):
         return self._forward_and_loss(batch, batch_idx)
@@ -106,7 +115,7 @@ class MastoidModuleBase(LightningModule):
         return self._forward_and_loss(batch, batch_idx)
 
     def predict_step(self, batch, batch_idx):
-        outputs = self._forward_and_loss(batch, batch_idx)
+        outputs = self.forward(batch)
         self.predictions_outputs.append(outputs)
         return outputs
 
@@ -119,13 +128,15 @@ class MastoidModuleBase(LightningModule):
             batch_idx (int): batch index
 
         Returns:
-            {"preds": torch.Tensor, "targets": torch.Tensor, "loss" : torch.Tensor}
+            {"preds": torch.Tensor, "targets": torch.Tensor, "loss" : torch.Tensor ...}
         """
-        preds, targets = self.forward(batch)
+        outputs = self.forward(batch)
+        
         # calculate loss
-        loss = self.loss(preds, targets)
-
-        return {"preds": preds, "targets": targets, "loss": loss}
+        loss = self.loss(outputs)
+        outputs["loss"] = loss
+        
+        return outputs
 
     @ staticmethod
     def add_specific_args(parser: configargparse.ArgParser):
@@ -135,6 +146,4 @@ class MastoidModuleBase(LightningModule):
             "--class_weights", type=float, nargs='+', required=True)
         mastoid_module_args.add_argument(
             "--class_names", type=str, nargs='+', required=True)
-        mastoid_module_args.add_argument(
-            "--test_output_dir", type=str, required=True)
         return parser

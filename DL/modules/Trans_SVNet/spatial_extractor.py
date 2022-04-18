@@ -1,92 +1,78 @@
-from pytorch_lightning import LightningModule
-from torch import optim
-import configargparse
-import torchmetrics
+from modules.mastoid.mastoid_module_base import MastoidModuleBase
+from modules.mastoid.mastoid_predictions_callback_base import MastoidPredictionsCallbackBase
+from typing import List, Dict
 import torch
+import pandas as pd
+import numpy as np
+import os
+import pickle
+import pytorch_lightning as pl
 
 
-class TransSVNetSpatialExtractor(LightningModule):
-    def __init__(self, hparams, model) -> None:
-        super().__init__()
+class TransSVNetSpatExtClbk(MastoidPredictionsCallbackBase):
+    def _split_predictions_outputs_by_videos(
+            self, module: MastoidModuleBase, pred_outputs: List) -> Dict:
+        # merge all batch results
+        all_preds = []
+        all_targets = []
+        all_spatial_features = []
+        for outputs in pred_outputs:
+            all_preds.append(outputs["preds"])
+            all_targets.append(outputs["targets"])
+            all_spatial_features.append(outputs["spatial_features"])
+        all_targets = torch.cat(all_targets)
+        all_preds = torch.cat(all_preds)
+        all_spatial_features = torch.vstack(all_spatial_features)
 
-        self.hprams = hparams
-        self.model = model
+        # split outputs by videos
+        vid_indexes = module.datamodule.vid_idxes["pred"]
+        df = module.datamodule.metadata["pred"]
+        outputs_by_videos = {}
+        for video_idx in vid_indexes:
+            # row indexes in df corresponding to the video
+            idxes = df.index[df[module.datamodule.video_index_col] == video_idx]
 
-        self.ce_loss = torch.nn.CrossEntropyLoss(
-            weight=torch.tensor(hparams.class_weights).float())
+            preds = all_preds[idxes]
+            targets = all_targets[idxes]
+            spatial_features = all_spatial_features[idxes, :]
 
-        self.init_metrics()
+            outputs_by_videos[video_idx] = {
+                "preds": preds, "targets": targets,
+                "spatial_features": spatial_features}
 
-    def init_metrics(self):
-        self.train_acc = torchmetrics.Accuracy()
-        self.val_acc = torchmetrics.Accuracy()
-        self.test_acc = torchmetrics.Accuracy()
+        return outputs_by_videos
 
-    def forward(self, x):
-        return self.model.forward(x)
-         
-    def get_spatial_feature(self, x):
-        return self.model.get_spatial_feature(x)
+    def _on_prediction_end_operations(
+            self, trainer: pl.Trainer, module: MastoidModuleBase) -> None:
+        outputs_by_videos = super()._on_prediction_end_operations(trainer, module)
 
-    def loss(self, p_phase, labels_phase):
-        loss = self.ce_loss(p_phase, labels_phase)
-        return loss
+        # outptu metadata file
+        metadata = pd.DataFrame(columns=["path", "video_index"])
 
-    def configure_optimizers(self):
-        """
-        return whatever optimizers we want here
-        :return: list of optimizers
-        """
-        optimizer = optim.Adam(self.parameters(),
-                               lr=self.hprams.learning_rate)
-        #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-        return [optimizer]  # , [scheduler]
+        print("saving spatial features...")
+        for video_idx, outputs in outputs_by_videos.items():
+            # save spatial features and targets
+            data = {
+                "spatial_features":
+                outputs["spatial_features"].cpu().numpy().astype(
+                np.float64),
+                "targets": outputs["targets"].cpu().numpy()}
+            output_file_path = os.path.join(
+                self.hprms.pred_output_path,
+                f'V{video_idx:02d}_spatial_features.pkl')
+            with open(output_file_path, "wb") as f:
+                pickle.dump(data, f)
 
-    def training_step(self, batch, batch_idx):
-        x, label = batch
-        output = self.forward(x)
-        loss = self.loss(output, label)
-        self.train_acc(output, label)
-        self.log("train_acc", self.train_acc,
-                 on_epoch=True, on_step=True)
-        self.log("loss", loss, prog_bar=True,
-                 logger=True, on_epoch=True, on_step=True)
-        return {"loss": loss, "train_acc": self.train_acc}
+            # add row in metadata file
+            row = {"path": output_file_path, "video_index": video_idx}
+            metadata = metadata.append(row, ignore_index=True)
 
-    def validation_step(self, batch, batch_idx):
-        x, label = batch
-        output = self.forward(x)
-
-        loss = self.loss(output, label)
-        self.val_acc(output, label)
-
-        self.log("val_acc", self.val_acc,
-                 on_epoch=True, on_step=False)
-        self.log("val_loss", loss, prog_bar=True,
-                 logger=True, on_epoch=True, on_step=False)
-        return {"val_loss": loss, "val_acc": self.val_acc}
-
-    def test_step(self, batch, batch_idx):
-        x, label = batch
-        output = self.forward(x)
-
-        loss = self.loss(output, label)
-        self.test_acc(output, label)
-
-        self.log("test_acc", self.test_acc,
-                 on_epoch=True, on_step=False)
-        self.log("test_loss", loss, prog_bar=True,
-                 logger=True, on_epoch=True, on_step=False)
-        return {"test_loss": loss}
-
-    def predict_step(self, batch, batch_idx):
-        x, label = batch
-        features = self.get_spatial_feature(x)
-        return features, label
-    @staticmethod
-    def add_specific_args(parser: configargparse.ArgParser):
-        trans_svnet_sptial_module_args = parser.add_argument_group(
-            title='trans_svnet_sptial_module specific args options')
-        trans_svnet_sptial_module_args.add_argument(
-            "--class_weights", type=float, nargs='+', required=True)
-        return parser
+        # save metadata file
+        metadata_file_name = "TransSVNet_Spatial_Features_metadata"
+        metadata.to_csv(
+            os.path.join(
+                self.hprms.pred_output_path, metadata_file_name + ".csv"),
+            index=False)
+        metadata.to_pickle(
+            os.path.join(
+                self.hprms.pred_output_path, metadata_file_name + ".pkl"))
