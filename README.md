@@ -26,3 +26,9 @@ To use full functionality of VSCode, developing in docker container is recommend
 2. use Remote-SSH extension to connect to remote server (a new VSCode window pops up)
 3. open a folder in the remote server (in the VSCode widow from previous step)
 4. use Remote-Container extension to connect to the running container in remote server 
+
+### Result Evaluation
+For each model save per video results in a single pickle file with convention [(video_index,pred,ground_truth)...]
+1. Run bars_cms.py to draw bar plots, generate CMs and model summaries for all three models. 
+2. Run bar_cm.py to draw bar plot, generate CM and model summary fot one single model.
+3. Need to modify model name and pickle file name in these files if not using conventional names: "SVRC, TeCNO, TRANS".
