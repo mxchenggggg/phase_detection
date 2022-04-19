@@ -9,7 +9,29 @@ from pycm import ConfusionMatrix
 import seaborn as sn
 import csv
 
+'''/**********************************************************************************************************
+ * RUN THIS FILE TO DRAW THREE BARS IN ONE CHART AND CREATE CONFUSION MATRICES FOR EACH VIDEO EACH MODEL. *
+ *                           THREE SUMMARY CSV FILES WILL BE GENERATED AS WELL.                           *
+ *                           1. PUT THREE SINGLE PKL FILE IN THE INPUTS FOLDER.                           *
+ *                  EACH PKL FILE SHOULD BE [(VIDEO_INDXES, PREDS, LABELS)...(.,.,.)...]                  *
+ *                                    CHANGE THE PKL FILE NAME BELOW.                                     *
+ *                                           2. RUN THE SCRIPT                                            *
+ *     3. BAR PLOTS WILL BE IN OUTPUTS_BAR, CM PLOTS IN OUTPUTS_CM, MODEL SUMMARY IN OUTPUTS_SUMMARY      *
+ **********************************************************************************************************/'''
 
+
+'''/**********************************
+ * CHANGE THE PKL FILE NAMES HERE *
+ **********************************/ '''
+
+#svrc pkl filename 
+svrc_pkl = "SVRC.pkl"
+#tecno pkl filename
+tecno_pkl = "TECNO.pkl"
+#transSV pkl filename
+trans_pkl = "TRANS_seqlen=10.pkl"
+
+# matplot draw rectangle
 def rect(x, y, c, width=1, height=150):  # inputs: left lower (x,y) and color
     return matplotlib.patches.Rectangle((x, y), width, height, color=c)
 
@@ -18,7 +40,6 @@ def drawRibbonGraph(fig, ax, preds, labels, video_num, model_name):
 
     if model_name == "SVRC":
         pred_y = 200
-        ax = fig.add_subplot(111)
 
     if model_name == "TeCNO":
         pred_y = 400
@@ -59,13 +80,24 @@ def drawRibbonGraph(fig, ax, preds, labels, video_num, model_name):
     return fig, ax
 
 class networkResults:
+    """ networkResults class
+    Take in a pickle out put with format: [(VIDEO_INDXES, PREDS, LABELS)...(.,.,.)...] 
+    Draw bars, CMs and write summary
+    Args:
+        name: network name
+        pickle: pickle outputs of the model
+        bar_dir: output dir for bar_graphs
+        cm_dir: output dir for cm
+        sum_dir: output dir for video summary
+    """
     def __init__(self, name, pickle,bar_dir,cm_dir,sum_dir):
         self.name = name
         self.bar_dir = bar_dir
         self.cm_dir = cm_dir
         self.sum_dir = sum_dir
         (self.indxes, self.preds, self.labels) = self.extractPickle(pickle)
-
+    
+    #  Sort pickle and return three sorted list indexes = [1,2,3...] preds = [pred1,pred2..] labels = [label1..]
     def extractPickle(self, pickle):
         # return sorted preds and labels
         indexes = []
@@ -95,7 +127,6 @@ class networkResults:
         #Print to console
         #cm.stat(overall_param=[], class_param=["ACC", "PPV", "TPR"])
 
-
         target_class = ["Exposure", "Antrum", "Facial"]
         df_cm = pd.DataFrame(
             cm.to_array(normalized=True), index=target_class, columns=target_class)
@@ -123,9 +154,9 @@ if __name__ == "__main__":
     if not os.path.exists(sum_dir):
         os.makedirs(sum_dir)
 
-    SVRC = pd.read_pickle(os.path.join(inputs_dir, "SVRC.pkl"))
-    TECNO = pd.read_pickle(os.path.join(inputs_dir, "TECNO.pkl"))
-    TRANS = pd.read_pickle(os.path.join(inputs_dir, "TRANS_seqlen=10.pkl"))
+    SVRC = pd.read_pickle(os.path.join(inputs_dir, svrc_pkl))
+    TECNO = pd.read_pickle(os.path.join(inputs_dir, tecno_pkl))
+    TRANS = pd.read_pickle(os.path.join(inputs_dir, trans_pkl))
 
     svrc = networkResults("SVRC", SVRC,bar_dir,cm_dir,sum_dir)
     tecno = networkResults("TeCNO", TECNO,bar_dir,cm_dir,sum_dir)
@@ -146,8 +177,9 @@ if __name__ == "__main__":
         print("Drawing video {}....".format(video_num))
         fig = plt.figure()
         fig.set_size_inches(15.5, 10)
+        ax = fig.add_subplot(111)
         fig, ax = drawRibbonGraph(
-            fig, 0, svrc.preds[k], svrc.labels[k], video_num, svrc.name
+            fig, ax, svrc.preds[k], svrc.labels[k], video_num, svrc.name
         )
         fig, ax = drawRibbonGraph(
             fig, ax, tecno.preds[k], tecno.labels[k], video_num, tecno.name
