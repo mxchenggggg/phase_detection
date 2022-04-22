@@ -9,20 +9,17 @@ import pickle
 import pytorch_lightning as pl
 
 
-class TransSVNetSpatExtClbk(MastoidPredictionsCallbackBase):
+class SVRCNetModule(MastoidPredictionsCallbackBase):
     def _split_predictions_outputs_by_videos(
             self, module: MastoidModuleBase, pred_outputs: List) -> Dict:
         # merge all batch results
         all_preds = []
         all_targets = []
-        all_spatial_features = []
         for outputs in pred_outputs:
             all_preds.append(outputs["preds"])
             all_targets.append(outputs["targets"])
-            all_spatial_features.append(outputs["spatial_features"])
         all_targets = torch.cat(all_targets)
         all_preds = torch.cat(all_preds)
-        all_spatial_features = torch.vstack(all_spatial_features)
 
         # split outputs by videos
         vid_indexes = module.datamodule.vid_idxes["pred"]
@@ -34,11 +31,9 @@ class TransSVNetSpatExtClbk(MastoidPredictionsCallbackBase):
 
             preds = all_preds[idxes]
             targets = all_targets[idxes]
-            spatial_features = all_spatial_features[idxes, :]
 
             outputs_by_videos[video_idx] = {
-                "preds": preds, "targets": targets,
-                "spatial_features": spatial_features}
+                "preds": preds, "targets": targets}
 
         return outputs_by_videos
 
@@ -68,7 +63,7 @@ class TransSVNetSpatExtClbk(MastoidPredictionsCallbackBase):
             metadata = metadata.append(row, ignore_index=True)
 
         # save metadata file
-        metadata_file_name = "TransSVNet_Spatial_Features_metadata"
+        metadata_file_name = "SVRC_metadata"
         metadata.to_csv(
             os.path.join(
                 self.hprms.pred_output_path, metadata_file_name + ".csv"),

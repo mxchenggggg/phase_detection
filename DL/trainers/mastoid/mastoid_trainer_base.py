@@ -27,7 +27,7 @@ class MastoidTrainerBase:
         Usage:
             Derive a trainer class from this base class (e.g. MyTrainer.py)
             or use this base class if no additional functionality needed:
-                
+
                 trainer = MyTrainer(default_config_file="DEFAULT_CONFIG_FILE_PATH")
                 trainer() # perform training or predicition
 
@@ -64,7 +64,7 @@ class MastoidTrainerBase:
         # 5. loggers
         tb_logger = TensorBoardLogger(self.hprms.log_output_path, name='tb')
         wandb_logger = WandbLogger(
-            name=self.hprms.name, project="transsvnet", entity="cis2mastoid")
+            name=self.hprms.name, project=self.hprms.project, entity="cis2mastoid")
 
         self.loggers = [tb_logger, wandb_logger]
 
@@ -107,7 +107,7 @@ class MastoidTrainerBase:
         """
         trainer = Trainer(
             gpus=self.hprms.gpus, logger=False)
-        
+
         trainer.predict(
             ckpt_path=self.hprms.resume_from_checkpoint,
             datamodule=self.datamodule, model=self.module)
@@ -152,9 +152,13 @@ class MastoidTrainerBase:
                              contians timestamp, module name, dataset name, and model name
         """
         # 1. experiment name
-        exp_name = (
-            self.hprms.module.split(".")[-1] + "_" + self.hprms.dataset.split(".")
-            [-1] + "_" + self.hprms.model.replace(".", "_"))
+        if self.hprms.experiment_name:
+            exp_name = self.hprms.experiment_name
+        else:
+            exp_name = (
+                self.hprms.module.split(".")[-1] +
+                "_" + self.hprms.dataset.split(".")
+                [-1] + "_" + self.hprms.model.replace(".", "_"))
         date_str = datetime.now().strftime("%y%m%d-%H%M%S_")
         exp_name = date_str + exp_name
 

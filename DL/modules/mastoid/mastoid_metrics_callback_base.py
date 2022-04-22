@@ -25,7 +25,7 @@ class MastoidMetricsCallbackBase(pl.Callback):
     @staticmethod
     def get_metric_classes():
         # default metrics
-        return {"acc": Accuracy, "prec": Precision, "recall": Recall}
+        return {"Accuracy": Accuracy, "Precision": Precision, "Recall": Recall}
 
     ### on train/val/test batch end ###
 
@@ -34,6 +34,7 @@ class MastoidMetricsCallbackBase(pl.Callback):
             outputs: Dict, batch: Any, batch_idx: int,
             unused: Optional[int] = 0) -> None:
         self._batch_eval_and_log(module, outputs, "train")
+        pass
 
     def on_validation_batch_end(
             self, trainer: pl.Trainer, module: pl.LightningModule,
@@ -50,27 +51,19 @@ class MastoidMetricsCallbackBase(pl.Callback):
     ### helper functions ###
 
     def _batch_eval_and_log(
-            self, module: pl.LightningModule, outputs: Dict, stage: str) -> Dict:
+            self, module: pl.LightningModule, outputs: Dict, stage: str) -> None:
         """ Calculate and log batch evaluations
 
         Args:
             module (MastoidModule): mastoid pytorch lightning module
             outputs (Dict): batch output {"preds": preds, "targets": targets, "loss": loss}
             stage (str): train/val/test
-
-        Returns:
-            Dict: preformance dictionary
         """
-        performace_dict = {}
-        preds = F.softmax(outputs["preds"], dim=1)
-        targets = outputs["targets"]
-        for name in getattr(module, f'{stage}_metric_names'):
-            getattr(module, name)(preds,targets)
-            performace_dict[name] = getattr(module, name)
-        performace_dict[f"{stage}_loss"] = outputs["loss"]
-        module.log_dict(performace_dict, on_epoch=True)
+        metrics = getattr(module, f'{stage}_metrics')
+        metrics(outputs["preds"],  outputs["targets"])
+        module.log_dict(metrics, on_epoch=True)
 
-        return performace_dict
+        module.log("loss", outputs["loss"])
 
     @staticmethod
     def add_specific_args(parser: configargparse.ArgParser):

@@ -13,7 +13,8 @@ def build_configargparser(parser: configargparse.ArgParser):
     module_group = parser.add_argument_group(title='Module options')
     module_group.add_argument("--module", type=str, required=True)
     module_group.add_argument("--metrics_callback", type=str, required=True)
-    module_group.add_argument("--predictions_callback", type=str, required=True)
+    module_group.add_argument(
+        "--predictions_callback", type=str, required=True)
 
     """ 3. config dataset """
     dataset_group = parser.add_argument_group(title='Dataset options')
@@ -25,6 +26,10 @@ def build_configargparser(parser: configargparse.ArgParser):
     """ 4. config trainer """
     trainer_group = parser.add_argument_group(title='Trainer options')
 
+    trainer_group.add_argument(
+        "--project", type=str, default="transsvnet",
+        help="project name for the wandb logger")
+    trainer_group.add_argument("--experiment_name", type=str, default=None)
     trainer_group.add_argument(
         "--gpus", type=int, nargs='+', default=0,
         help="how many gpus / -1 means all")
@@ -45,7 +50,8 @@ def build_configargparser(parser: configargparse.ArgParser):
     trainer_group.add_argument("--learning_rate", default=0.0005, type=float)
 
     # check logging frequency
-    trainer_group.add_argument("--save_top_k", default=1, type=int)  # -1 == all
+    trainer_group.add_argument(
+        "--save_top_k", default=1, type=int)  # -1 == all
     trainer_group.add_argument(
         "--early_stopping_metric", type=str, default="val_loss")
     trainer_group.add_argument(
@@ -54,9 +60,11 @@ def build_configargparser(parser: configargparse.ArgParser):
     trainer_group.add_argument("--fast_dev_run", default=False, type=str)
     trainer_group.add_argument("--name", default=None, type=str)
 
-    trainer_group.add_argument("--logs_checkpoints_output_path", type=str, default="logs")
+    trainer_group.add_argument(
+        "--logs_checkpoints_output_path", type=str, default="logs")
 
-    dataset_group.add_argument("--prediction_output_path", default="", type=str)
+    dataset_group.add_argument(
+        "--prediction_output_path", default="", type=str)
 
     """ parse arguments """
     known_args, _ = parser.parse_known_args()

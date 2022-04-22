@@ -3,7 +3,9 @@ import torch
 import configargparse
 from typing import Tuple, Dict, List
 from datasets.mastoid.mastoid_datamodule import MastoidDataModule
+from torchmetrics import MetricCollection
 from modules.mastoid.mastoid_metrics_callback_base import MastoidMetricsCallbackBase
+from torchmetrics import Accuracy, Precision, Recall
 
 
 class MastoidModuleBase(LightningModule):
@@ -12,6 +14,7 @@ class MastoidModuleBase(LightningModule):
     Args:
         LightningModule (_type_): _description_
     """
+
     def __init__(self, hparams, model: torch.nn.modules,
                  datamodule: MastoidDataModule, metrics_callback_class,
                  predictions_callback_class) -> None:
@@ -43,25 +46,39 @@ class MastoidModuleBase(LightningModule):
         if hparams.predict:
             self.init_prediction_per_class_metrics()
 
+        self.my_acc = Accuracy()
+
     def init_training_metrics(self):
         # calling static method of metric callback class
-        metric_classes = self.metrics_callback_class.get_metric_classes()
+        metric_list = []
+        for _, metric_class in self.metrics_callback_class.get_metric_classes().items():
+            # average of per-class metric
+            metric_list.append(
+                metric_class(
+                    num_classes=self.hprms.out_features,
+                    average='macro'))
 
-        for stage in ["train", "val", "test"]:
-            setattr(self, f'{stage}_metric_names', [])
-            for name, metric_class in metric_classes.items():
-                attr_name = f'{stage}_{name}'
-                getattr(self, f'{stage}_metric_names').append(attr_name)
-                setattr(self, f'{stage}_{name}', metric_class())
+        # initialize metrics
+        metrics = MetricCollection(metric_list)
+        self.train_metrics = metrics.clone(prefix='train_')
+        self.val_metrics = metrics.clone(prefix='val_')
+        self.test_metrics = metrics.clone(prefix='test_')
 
     def init_prediction_per_class_metrics(self):
-        metric_classes = MastoidMetricsCallbackBase.get_metric_classes()
-        setattr(self, 'pred_metric_names', [])
-        for name, metric_class in metric_classes.items():
-            getattr(self, 'pred_metric_names').append(name)
-            setattr(self, f'pred_{name}_by_class', metric_class(
-                num_classes=self.hprms.out_features, average='none'))
-            setattr(self, f'pred_{name}_all', metric_class())
+        # calling static method of metric callback base class
+        metric_list = []
+        self.pred_metrics_names = []
+        for metric_name, metric_class in MastoidMetricsCallbackBase.get_metric_classes():
+            self.pred_metrics_names.append(metric_name)
+            metric_list.append(
+                metric_class(
+                    num_classes=self.hprms.out_features,
+                    average='none'))
+
+        # initialize metrics
+        metrics = MetricCollection(metric_list)
+        self.pred_metrics_by_class = metrics.clone(
+            prefix="pred", postfix="by_class")
 
     def configure_callbacks(self):
         # metric callback
@@ -131,11 +148,11 @@ class MastoidModuleBase(LightningModule):
             {"preds": torch.Tensor, "targets": torch.Tensor, "loss" : torch.Tensor ...}
         """
         outputs = self.forward(batch)
-        
+
         # calculate loss
         loss = self.loss(outputs)
         outputs["loss"] = loss
-        
+
         return outputs
 
     @ staticmethod
