@@ -63,7 +63,7 @@ class MastoidMetricsCallbackBase(pl.Callback):
         metrics(outputs["preds"],  outputs["targets"])
         module.log_dict(metrics, on_epoch=True)
 
-        module.log("loss", outputs["loss"])
+        module.log(f"{stage}_loss", outputs["loss"])
 
     @staticmethod
     def add_specific_args(parser: configargparse.ArgParser):

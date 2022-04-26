@@ -67,9 +67,9 @@ class MastoidModuleBase(LightningModule):
     def init_prediction_per_class_metrics(self):
         # calling static method of metric callback base class
         metric_list = []
-        self.pred_metrics_names = []
-        for metric_name, metric_class in MastoidMetricsCallbackBase.get_metric_classes():
-            self.pred_metrics_names.append(metric_name)
+        self.pred_metric_names = []
+        for metric_name, metric_class in MastoidMetricsCallbackBase.get_metric_classes().items():
+            self.pred_metric_names.append(metric_name)
             metric_list.append(
                 metric_class(
                     num_classes=self.hprms.out_features,
@@ -78,7 +78,7 @@ class MastoidModuleBase(LightningModule):
         # initialize metrics
         metrics = MetricCollection(metric_list)
         self.pred_metrics_by_class = metrics.clone(
-            prefix="pred", postfix="by_class")
+            prefix="pred_", postfix="_by_class")
 
     def configure_callbacks(self):
         # metric callback

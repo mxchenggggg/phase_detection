@@ -110,10 +110,7 @@ class MastoidPredictionsCallbackBase(pl.Callback):
             prediction_results_all_videos[vid_idx] = outputs
 
         # calculate per-class/all metric result for train/val/test
-        prediction_results_all_videos["train_vid_idxes"] = module.datamodule.vid_idxes["train"]
-        prediction_results_all_videos["val_vid_idxes"] = module.datamodule.vid_idxes["val"]
-        prediction_results_all_videos["test_vid_idxes"] = module.datamodule.vid_idxes["test"]
-        prediction_results_all_videos["pred_vid_idxes"] = module.datamodule.vid_idxes["pred"]
+        prediction_results_all_videos["vid_idxes"] = module.datamodule.vid_idxes
         for split in ["train", "val", "test"]:
             all_preds = []
             all_targets = []
@@ -123,7 +120,7 @@ class MastoidPredictionsCallbackBase(pl.Callback):
                 all_targets.append(outputs_by_videos[vid_idx]["targets"])
             targets = torch.cat(all_targets)
             preds = F.softmax(torch.cat(all_preds), dim=1)
-            
+
             df = self._get_perclass_and_all_metric_eval_df(
                 module, preds, targets)
             prediction_results_all_videos[split] = {"eval_df": df}
@@ -143,18 +140,21 @@ class MastoidPredictionsCallbackBase(pl.Callback):
             "prediction_evaluation_results.txt")
         with open(pred_eval_result_file_txt, "w") as f:
             for key, results in prediction_results_all_videos.items():
-                # print evaluation result dataframe to txt file
-                df = results["eval_df"].astype(float)
-                # video index
-                if type(key) == int:
-                    title = f'Video {vid_idx}\n'
-                # train/test/val
-                else:
-                    title = f'{key} videos\n'
-                f.write(title)
-                df.to_csv(f, sep='\t', decimal='.', float_format="%.3f")
-                f.write('\n')
-        
+                if "eval_df" in results:
+                    # print evaluation result dataframe to txt file
+                    df = results["eval_df"].astype(float)
+                    # video index
+                    if type(key) == int:
+                        title = f'Video {key}\n'
+                    # train/test/val
+                    else:
+                        title = f'{key} videos\n'
+                    df_str = df.to_string(float_format='%.3f')
+                    
+                    output_str = f'{title}{df_str}\n'
+                    f.write(output_str + '\n')
+                    print(output_str)
+
         # outputs by videos returned by _split_predictions_outputs_by_videos
         return outputs_by_videos
 
@@ -193,6 +193,14 @@ class MastoidPredictionsCallbackBase(pl.Callback):
                 df.loc[metric_name, class_name] = val
 
             df.loc[metric_name, "all"] = values_by_class.mean().item()
+
+        # new_col_names = {}
+        # for curr_col_name in df.columns:
+        #     new_col_names[curr_col_name] = f'{curr_col_name: <10}'
+        # new_indexes = {}
+        # for curr_idx in df.index:
+        #     new_indexes[curr_idx] = f'{curr_idx: <10}'
+        # df.rename(columns = new_col_names, index=new_indexes)
         return df
 
     @staticmethod
