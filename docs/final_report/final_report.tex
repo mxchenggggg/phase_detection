@@ -1,0 +1,481 @@
+\documentclass[11pt]{article} \usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
+\usepackage{amsfonts, amsmath, amssymb, amsthm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[british,calc]{datetime2}
+\usepackage{advdate}
+\usepackage{tikz}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{makecell}
+\bibliographystyle{ieeetr}
+\usetikzlibrary{calc,arrows}
+\usepackage{multirow}
+% Timeline https://tex.stackexchange.com/questions/61237/timeline-and-tikz
+\newdimen\XCoord
+\newdimen\YCoord
+\newcommand*{\ExtractCoordinate}[1]{\path (#1); \pgfgetlastxy{\XCoord}{\YCoord};}
+% modify these for altered timeline appearance
+% ============================= 
+\pgfmathsetmacro{\mintime}{0}
+\pgfmathsetmacro{\maxtime}{14}
+\newcommand{\timeunit}{Week}
+\pgfmathtruncatemacro{\timeintervals}{14}
+\pgfmathsetmacro{\scaleitemseparation}{3}
+\pgfmathsetmacro{\timenodewidth}{8cm}
+\newcounter{itemnumber}
+\setcounter{itemnumber}{0}
+\newcommand{\lastnode}{n-0}
+
+% ============================= 
+% entry in timeline
+\newcommand{\timeentry}[2]{% time, description
+\stepcounter{itemnumber}
+\node[below right,text width=\timenodewidth] (n-\theitemnumber) at (\lastnode.south west) {#2};
+\edef\lastnode{n-\theitemnumber}
+\expandafter\edef\csname nodetime\theitemnumber \endcsname{#1}
+}
+% timeline scale and labels
+\newcommand{\drawtimeline}[1]{% start date
+    \draw[very thick,-latex] (0,0) -- ($(\lastnode.south west)-(\scaleitemseparation,0)+(0,-1)$);
+    \ExtractCoordinate{n-\theitemnumber.south}
+    \pgfmathsetmacro{\yposition}{\YCoord/28.452755}
+    \foreach \x in {1,...,\theitemnumber}
+    {   \pgfmathsetmacro{\timeposition}{\yposition/(\maxtime-\mintime)*\csname nodetime\x \endcsname}
+        %\node[right] at (0,\timeposition) {\yposition};
+        \draw (0,\timeposition) -- (0.5,\timeposition) -- ($(n-\x.west)-(0.5,0)$) -- (n-\x.west);
+    }
+    \foreach \x in {0,...,\timeintervals}
+    {   \pgfmathsetmacro{\labelposition}{\yposition/(\maxtime-\mintime)*\x}
+        \node[left] (label-\x) at (-0.2,\labelposition) {\textcolor{gray}{\bf \timeunit\ \the\numexpr\x + 1\relax} \ \DTMdate{#1 + \the\numexpr\x * 7\relax}\ -\ \DTMdate{#1 + \the\numexpr\x * 7 +6\relax}};
+        \draw (label-\x.east) -- ++ (0.2,0.0);
+    }   
+}
+
+% set date format as mm//dd
+\renewcommand{\DTMdisplaydate}[4]{#2/#3}
+
+\renewcommand{\refname}{Reference}
+
+\title{Surgical Phase Detection Using Deep Learning\\ Project Final Reprt}
+\author{Xiaorui Zhang, Wenkai Luo, Xucheng Ma}
+\date{May 2022}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+Our project focuses on developing deep learning models which perform mastoidectomy video segmentation. The model \textbf{inputs} is a sequence of frames, and model \textbf{output} is a sequence of surgical phase labels. The main technical problems we need to solve is how to design an efficient and robust feature extractor to transform surgical videos into embeddings, then we can perform temporal classification in the feature space to obtain phase labels.
+
+\vspace{0.25cm}
+\noindent
+\textbf{Mastoidectomy} is a surgery to remove cells in the hollow, air-filled spaces in the skull behind the ear within the mastoid bone. There are three main tasks in this surgery: Exposure, Open Antrum, and Facial Recess. \cite{wiki} For Exposure phase, the main task is to drill onto the skull to open a working region for later steps. During Open Antrum phase, a surgeon first identify the antrum and further open it. After the antrum is fully opened, incus can be identified and exposed. When incus is fully exposed the surgery proceeds to the final stage Facial Recess. 
+
+\vspace{0.25cm}
+\noindent
+\textbf{Surgical phase recognition} is the task of detecting surgery progress from either untrimmed offline or live-streamed online surgery videos.
+
+\vspace{0.25cm}
+\noindent
+Surgical phase recognition is of \textbf{significant importance} in the area of digitized surgery. In the context of offline implementation, a well-segmented surgery video can guide surgeons’ skill analysis \cite{SkillEvaluation}, extract surgical protocol, and support decision-making.\cite{WorldHospital} While in online implementation, real-time surgical phase information can be shared within the operating room to help nurses prepare for the following stages and give context-awareness feedback to the surgeons. Real-time surgical phase detection can transfer information effectively outside the operating room, making the surgery more transparent. \cite{ReviewPaper}
+
+\section{Background}
+Deep learning based solutions have seen great success in phase segmentation for endoscopic surgeries. However, there is few prior DL based phase segmentation work in the context of Mastoidectomy\cite{segmentaion}. In general surgical phase segmentation workflow, both \textbf{spatial} features and \textbf{temporal} features are often considered, e.g.
+\begin{itemize}
+  \item Spatial Features: anatomical structures, tool presence/positioning ...
+  \item Temporal Features: anatomical changes, tool movement, and camera view changes ...
+\end{itemize}
+Mastoidectomy videos has some characteristic features:
+\begin{itemize}
+  \item Anatomical features are constantly changing as skull is being removed during the surgery.
+  \item Anatomical changes are mostly in depth direction as the overall surgery process is exposing the interior structures behind patient's ear.
+  \item Camera view changes might imply transition between surgical phases. But camera view change is not required for transitions of phases.
+  \item Tool motions contain more useful information about correct phase label than tool presence. Between Exposure and Antrum phases, phase transitions are defined only by tool motions and the anatomical regions where the tool is working on. In the beginning of Facial Recess phase, surgeon switches to a smaller drill, and this is the only tool presence signal we can rely on.  
+\end{itemize}
+
+\vspace{0.25cm}
+\noindent
+Typical DL methods for surgical phase segmentation has following components:
+\begin{itemize}
+  \item Spatial Feature Extractor: One of the essential parts of the architecture is the spatial feature extractor, which extracts the feature from the frames and converts them into an condensed embedding. Based on the idea of transfer learning, the pre-trained convolutional neural network(CNN) models have been proved to be stat-of-the-art on many computer vision tasks. Furthermore, the pre-trained model can extract more specific features with the fine-tuning process using the mastoidectomy dataset.\cite{EndoNet}
+  \item Temporal Network: The temporal network captures the temporal patterns from the extracted per-frame spatial features. The temporal patterns are essential to make a correct prediction since the patterns can provide clues of surgery environment change and the instrument motion. Recurrent neural networks such as LSTM, temporal convolution neural network (TCN), and transformer are promising architectures for capturing the temporal pattern. However, some research argues that LSTM can only capture short-term information while long-term context might be beneficial for accurate segmentation.\cite{lstm} All of them will be implemented on the mastoidectomy dataset in our project.
+  \item Spatial-Temporal Fusion: Having a great feature extractor or temporal network alone is not enough for successful classification. We also need an elegant way to fuse these two models together in a way that the feature extractor extracts the most effective features for temporal classification.
+  \item Classifier in Feature Space: The fully connected neural network(FCNN) will then be trained with the ground truths to make the phase decision based on the extracted spatial-temporal feature since it can approximate any arbitrary function.
+\end{itemize}
+
+\section{Deliverables}
+\begin{itemize}
+            \item \textbf{Minimum: Benchmarking Existing DL Solutions:}
+            \begin{enumerate}
+                \item New dataset from cortical mastoidectomy videos.
+                \item Benchmark three existing methods that are designed for a similar task (Cholecystectomy).
+                \item A well-documented benchmarking code base that can be easily reused to test out any model for our dataset.
+            \end{enumerate}
+            \item \textbf{Expected: Design a DL Solution for Skull-base Surgery:}
+            \begin{enumerate}
+                \item Experiment results analysis of the weakness of benchmarked models.
+                \item Design a new model that achieved 85\% accuracy, 80\% recall, and precision.
+            \end{enumerate}
+            \item \textbf{Maximum:}
+            \begin{enumerate}
+                \item Conference paper.
+            \end{enumerate}
+        \end{itemize}
+
+\section{Dataset and Data preprocessing}
+Our dataset consisted of 18 videos of mastoidectomy surgeries from the Department of Otolaryngology at Johns Hopkins Medicine (JHMI), collected and labeled by an experienced surgeon. The Institutional Review Board for Human Investigations at JHMI approved this retrospective study with a waiver of informed consent (IRB00291909). The imaging data were anonymized in accordance with the Health Insurance Portability and Accountability Act (HIPAA) privacy rule. All data were acquired at 30 frames per second (FPS) with resolution of 1920 × 1080. A phase(step) label and an additional explanatory task(action) label were determined by the surgeon for each frame. The phase(step) labels and task(action) labels are summarized in table \ref{tab:labels_summary} below:
+\begin{table}[ht!] 
+    \centering
+    \begin{tabular}{l c}
+    \toprule % Top horizontal line
+    \textbf{Surgical Phases(Steps)} & \textbf{Possible actions in this phase(steps)}\\ 
+    \midrule % In-table horizontal line
+        Exposure  &\makecell{Initial bony cuts, SS, Tegmen, EAC, Thin EAC,\\ Idle, Microscope Adjustment, Bone Wax}\\
+        Antrum    & Open Antrum, Expose Incus, Idle, Microscope Adjustment,  \\
+        Facial Recess & Facial Recess, Idle, Microscope Adjustment\\
+    \bottomrule % Bottom horizontal line
+    \end{tabular}
+    \caption{Phase and task lables summary}
+    \label{tab:labels_summary} 
+\end{table}
+
+\vspace{0.25cm}
+\noindent
+All images frames are down sampled to 400 x 225 while keeping the original aspect ratio. All videos are down sampled to 1 fps to reduce the total number of frames. Ground truth for all videos are summarized in figure \ref{fig:gt}.
+\begin{figure}[H]
+  \includegraphics[width=0.9\textwidth]{final_report/imgs/groundtruth.png}
+  \centering
+  \caption{Ground truth phase labeling for all videos.}
+  \label{fig:gt}
+\end{figure}
+
+
+\section{Bechmarking existing DL methods}
+Our project starts with benchmarking three models with best performance in the context of the cholecystectomy surgical phase recognition task, trained and tested the Cholec80 Dataset\cite{EndoNet}. By benchmarking we want to find out two things: first, how generalized the phase detection models designed for Cholec80 dataset are. Secondly, if these models failed, what the reasons behind are, and how can we can learn from these failures and come up with our own solution to this task.
+
+\subsection{SVRC-Net}
+The first model we benchmarked is SVRC-Net.\cite{SV-RCNet} SVRC-Net, as the state of the art model in 2018 solved the following drawbacks in prior works. 
+\begin{itemize}
+  \item The previously used visual features, either hand-crafted or shallow CNN-based, are still far from sufficient to represent the complicated visual characteristics of the frames in surgical videos. SVRC-Net was the first model that used a deep neural network (ResNet) to extract spatial features. The ResNet makes it possible to optimize a much deeper network by embedding the identity transformation into the network through residual blocks. Using the ResNet as a spatial feature extractor, the SV-RCNet is able to find more discriminative features compared with models of shallow CNN. 
+  \item When exploiting the temporal information, most traditional methods rely on linear statistical models with pre-defined dependencies, which are incapable of precisely representing motions in surgical videos. Instead of dealing with spatial and temporal features separately, SV-RCNet integrates ResNet and LSTM to form a novel recurrent convolutional architecture in order to take full advantage of the complementary information of visual and temporal features. LSTM is a direct improvement on the top of recurrent neural network (RNN), LSTM uses gates to generate “cell states” to aid the gradient flow and alleviate vanishing gradient.
+  \item Most existing methods harness visual and temporal information separately, i.e., first using visual features with classifiers to predict each frame, and then using temporal dependencies to refine the results. In this way, visual features are unable to play a role in the temporal model. SV-RCNet integrates the ResNet and the LSTM network, so that they are jointly trained in an end-to-end manner to generate high-level features that encode both spatial (visual) and temporal information. Particularly, the Spatio-temporal features learned by SV-RCNet are sensitive to motions in surgical videos and can precisely identify the phase transition frames.
+\end{itemize}
+
+\vspace{0.25cm}
+\noindent
+LSTM, as one of the most effective temporal feature extractors prior to the transformer, there are still drawbacks inherited in LSTMs, which retain the memory of a limited sequence, that cannot span minutes or hours, which is the average duration of surgery. The main focus of this benchmarking was on the LSTM itself. We tested out the segmentation task using different input sequence lengths, tune and found the best hyperparameters to get the most out of the LSTM. To determine the best sequence length We did 4 experiments with 4,8,10,14 frames per sequence. We noticed better performance while increasing the sequence length up until 10. As the sequence length increases, the segmentation results get smoother and more accurate. While doing 12 frames per sequence we noticed a accuracy drop down in the phase of Antrum, as this phase is transitional and many actions are performed in short sequences, using longer sequence may have side-effects and impede learning in this phase. Therefore we used 10 frames as our sequence length. We used a weighted cross-entropy loss to alleviate the problem of unbalanced labeling. In the final evaluation we used learning rate 0.001, batch size 80, Adam optimizer and trained for 10 epochs with validation loss as our early stopping metric. A six folds cross-validation was used to get the best performance estimate of our model.
+
+\subsection{TeCNO}
+Once LSTM has been proven to be state-of-the-art in dealing with the temporal task, lots of research aims to adapt the LSTM model to the surgery workflow analysis. The promising results from LSTM-related models prove its capability on time-series data. However, more experiments and analyses in the following research indicated that patient anatomy and surgeon style variability are new bottlenecks for more accurate segmentation. Recent research found that the long-range temporal dependencies are beneficial for compensating for these challenges, while LSTM has been proven unable to capture the long-range temporal pattern. The weakness of LSTM is the motivation of TeCNO\cite{TeCNO}, which introduces a temporal convolution neural network to handle both local temporal relations between adjacent frames and long-range global ties. 
+
+\vspace{0.25cm}
+\noindent
+TeCNO has a similar structure to the previous model except for the temporal feature extractor in terms of the detailed architecture. TeCNO leverages transfer learning using a pre-trained ResNet50 model as a spatial feature extractor. A multi-stage temporal convolutional network(MS-TCN) which takes the extracted spatial embeddings is deployed. Each stage of MS-TCN consists of multiple dilated temporal convolution layers. The predictions are refined by stacking multiple stages together. In order to adapt the TeCNO to the mastoidectomy dataset, the pre-trained ResNet model is fine-tuned using the mastoidectomy clips and the phase label cross-entropy loss, whereas the original model has two heads, including the phase prediction and tool presence. The MS-TCN using the default setting was implemented at first, then we decreased the receptive field when realizing that the local tool motion is a strong clue in this specific surgery. After training 15 epochs with the suitable hyperparameters, the ResNet-based spatial feature extractor converges. The activation maps on the first fully-connected layer are extracted as the input for the next-stage network MS-TCN in this case. After conducting several ablation experiments to search for the optimal setting for our dataset, we can get the optimal performance by using a two-stage TCN with eight layers.
+
+\subsection{Trans-SVNet}
+Previous methods perform spatial and temporal feature extractions in serial, where CNN-based methods serves as spatial feature extractor, and the resulting features are then fed into temporal feature extractor; there's no specific module in the network that fuse the spatial and temporal features. The spatial-temporal representations obtained by successive spatial and temporal feature extractions overlook the complementary effects of spatial and temporal features. \cite{TransSVNet}. Trans-SVNet introduced a transformer layer to fuses spatial and temporal features.
+
+\vspace{0.25cm}
+\noindent
+When training/testing Trans-SVNet on our new dataset, we use ResNet50 as the spatial feature extractor and TeCNO as temporal feature extractor; these two extractors are same as the ones used when banchmarking SV-RCNet and TeCNO, as we want to verify that the transformer layer indeed improves the performance by compensating the temporal features with spatial features. The first transformer layer of the aggregation model performs self-attention on sequence of temporal features , then the second transformer layer performs a cross-attention where dimensionally reduced spatial features are queries, and the resulting temporal features from previous transformer layer are both keys and values. The output features is a weighted sum of temporal features in the sequence, where the weights contains information of the relations between corresponding spatial feature and other temporal features in the sequence.
+
+\vspace{0.25cm}
+\noindent
+We used the same hyperparameters for training TeCNO when training two feature extractors. The transformer aggregator is trained with Adam optimizer and learning rate of $0.0001$ for $50$ epochs. 6-fold cross-validation was used to esitimate the model performance. 
+
+\section{Benchmarking Results \& Discussions \& Proposed Solutions}
+In this section, we will present bechmarking results, discuss the possible reasons behind the success and failure of the results, and propose solutions for solving protential problems.
+\subsection{Results}
+For each banchmached method, we report accuracy and precision for each class and the average value across all classes; all results are calculated as average values from 6-fold cross validation results. The accuracy for a class is defined as the ratio between number of data points correctly labeled as the class and total number of data points belong to the class. Therefore, there is no ``true negative'' and ``false positive'', and recall takes the same value as accuracy, so we omit the recall here.
+\begin{itemize}
+    \item \textbf{SVRC-Net}:
+    
+    The averaged results form six folds cross validation of SVRC-Net is summarized in the table below.
+    \begin{table}[ht!] 
+        \centering
+        \begin{tabular}{l c c c c}
+        \toprule % Top horizontal line
+        & \multicolumn{4}{c}{\textbf{Evaluation Results}} \\ 
+        \cmidrule(l){2-5}
+        \textbf{Metrics} & Expose & Antrum & Facial Recess & All\\ 
+        \midrule % In-table horizontal line
+            Accuracy  &  0.71 &  0.57 &  0.89 & 0.723\\
+            Precision &  0.74 &  0.56 &  0.88 & 0.727\\
+        \bottomrule % Bottom horizontal line
+        \end{tabular}
+        \caption{6-fold cross-validation average results for SVRC-Net}
+        \label{tab:6foldSVRC} 
+    \end{table}
+    From the above table, we can see SVRC-Net performed very well in detecting facial recess phase achieving near 0.9 accuracy, precision and recall. It performed worst in the phase of Antrum. As we can see the confusion matrices in \ref{fig:v5_cms} \ref{fig:v8_cms}, this model is incapable of distinguish between Expose and Antrum. 
+    \item \textbf{TeCNO}:
+    \begin{table}[ht!] 
+        \centering
+        \begin{tabular}{l c c c c}
+        \toprule % Top horizontal line
+        & \multicolumn{4}{c}{\textbf{Evaluation Results}} \\ 
+        \cmidrule(l){2-5}
+        \textbf{Metrics} & Expose & Antrum & Facial Recess & All\\ 
+        \midrule % In-table horizontal line
+            Accuracy  &  0.781 &  0.520 &  0.905 & 0.736\\
+            Precision &  0.734 &  0.557 &  0.962 & 0.751\\
+        \bottomrule % Bottom horizontal line
+        \end{tabular}
+        \caption{6-fold cross-validation average results for TeCNO}
+        \label{tab:6foldTeCNO} 
+    \end{table}
+    In the comparison with table~\ref{tab:6foldSVRC}, TeCNO performs better on detecting Expose and Facial Recess. However, its segmentation performance on Antrum is worse. Meanwhile we realize that the end-to-end model(SVRC-Net) has higher accuracy than both TeCNO and TransSV-Net that are two-stage models. 
+    \item \textbf{TransSV-Net}:
+    \begin{table}[ht!] 
+        \centering
+        \begin{tabular}{l c c c c}
+        \toprule % Top horizontal line
+        & \multicolumn{4}{c}{\textbf{Evaluation Results}} \\ 
+        \cmidrule(l){2-5}
+        \textbf{Metrics} & Expose & Antrum & Facial Recess & All\\ 
+        \midrule % In-table horizontal line
+            Accuracy  &  0.769 &  0.531 &  0.901 & 0.734\\
+            Precision &  0.737 &  0.539 &  0.958 & 0.745\\
+        \bottomrule % Bottom horizontal line
+        \end{tabular}
+        \caption{6-fold cross-validation average results for Trans-SVNet}
+        \label{tab:6foldTransSVNet} 
+    \end{table}
+    Comparing Table \ref{tab:6foldTeCNO} and Table \ref{tab:6foldTransSVNet}, we can see that the the performance of Trans-SVNet is almost identical to that of TeCNO, and there's no significant improvement by add a transformer layer to fuse spatial and temporal features.
+\end{itemize}
+To better visualize the performance of our model rather than reporting the quantitive result such as loss and accuracy, a color-coded ribbon illustration script is created to visualize the result against the time stamp and have a better understanding of the performance classwisely. Regarding the quantitive measurement of each phase, we utilize the confusion matrix method. The following results will be presented in these three formats.
+
+\vspace{0.25cm}
+\noindent
+Taking video 5 and video 8 as examples, per video metric (confusion matrix) and segmentation bar charts for all three methods are plotted below.
+\begin{figure}[H]
+  \includegraphics[width=0.6\textwidth]{final_report/imgs/V5_bars.png}
+  \centering
+  \caption{Video 5 bar charts for all three methods }
+  \label{fig:v5_bars}
+\end{figure}
+\begin{figure}[H]
+  \includegraphics[width=\textwidth]{final_report/imgs/video5_cms.png}
+  \centering
+  \caption{Video 5 Confusion matrices for all three methods }
+  \label{fig:v5_cms}
+\end{figure}
+\begin{figure}[H]
+  \includegraphics[width=0.6\textwidth]{final_report/imgs/V8_bars.png}
+  \centering
+  \caption{Video 8 bar charts for all three methods }
+  \label{fig:v8_bars}
+\end{figure}
+\begin{figure}[H]
+  \includegraphics[width=\textwidth]{final_report/imgs/video8_cms.png}
+  \centering
+  \caption{Video 8 Confusion matrices for all three methods }
+  \label{fig:v8_cms}
+\end{figure}
+
+\subsection{Discussions}
+In the results section, we noticed all three benchmarking models performed the worst in detecting Antrum phase, and perform really well in detecting Facial Recess phase. Performance in Exposure is in between Antrum and Facial Recess. 
+\subsubsection{Exposure}
+\begin{itemize}
+    \item \textbf{High variance inside the Exposure phase}
+    
+    Expose phase contains 8 different actions as summarized above in section 1.3.1. Different visual appearance in these phases creates a high variance surgical phase and makes it harder for the network to learn. 
+    \begin{figure}[H]
+      \includegraphics[width=0.9\textwidth]{final_report/imgs/DifferentExposes.png}
+      \centering
+      \caption{Selection of different frames belongs to Expose Phase in Video 17}
+      \label{fig:3framesAntrum}
+    \end{figure}
+\end{itemize}
+
+\subsubsection{Antrum}
+\begin{itemize}
+    \item \textbf{Antrum as a transitional phase has a lot of noise}:\\
+    Antrum serves as a transitional phase between Exposure and Facial Recess; less than half of motions in this phase are actually surgery operation (open antrum, expose incus). The other half are full of noise such as idling, microscope movement as surgeon preparing for the next step. To figure out if the poor performance in antrum actually comes from these noises, we performed the experiment illustrate in fig \ref{fig:denoise}. We sample short (10s) sequences from our dataset which only contains informative surgery operation and get rid off all the "noise" such as Idle, Microscope Adjustment, Bone Wax etc. We then created a datloader to randomly sample from this noise-free sequential dataset and perform classification for it. From this experiment, we noticed the classification accuracy for Expose and Facial Recess both increased, but decreased for the Antrum phase, our model confidently predicts majority of Antrum phase to Expose. These results showed noises did impede the learning in both Exposure and Facial Recess phases, but was not the real reason behind poor performance in Antrum phase. 
+    \begin{figure}[H]
+      \includegraphics[width=0.9\textwidth]{final_report/imgs/denoisemodel.png}
+      \centering
+      \caption{De-noising experiment}
+      \label{fig:denoise}
+    \end{figure}
+    
+    \item \textbf{Similar Anatomy Appearence in Expose and Antrum Phases}
+    
+    Since the noise is not the major reason, we focused more on the dataset itself. It turned out not only the Exposure phase is versatile, some parts of it has similar visual appearance as in Antrum phase. This similarity could explain why the model can't distinguish between Antrum and Expose, but the model perfectly differentiate Facial Recess from these two phases. 
+    \begin{figure}[H]
+      \includegraphics[width=0.9\textwidth]{final_report/imgs/threeExpose.png}
+      \centering
+      \caption{Three consecutive frames of Expose (Thin EAC) phase in Video 17}
+      \label{fig:3framesExpose}
+    \end{figure}
+    \begin{figure}[H]
+      \includegraphics[width=0.9\textwidth]{final_report/imgs/threeAntrum.png}
+      \centering
+      \caption{Three consecutive frames of Antrum (Expose Incus) phase in Video 17}
+      \label{fig:3framesAntrum}
+    \end{figure}
+    
+    \item \textbf{Motions in antrum phase are mostly in depth }:
+    
+    As seen in \ref{fig:3framesAntrum}, the motions in Antrum phase is predominately in depth (inwards and outwards video frame). As we are only using 2D (x,y) videos for our detection, it's much harder for our network to pickup motions in the z direction (depth). To tackle this problem, we propose to use a model with higher capability in detecting motions.
+    One of our proposal is shown in fig \ref{fig:motionmodel}. Where stacked optical flow and Frame volumes will be used in additional to single frames to better extract motion information.
+    \begin{figure}[H]
+      \includegraphics[width=0.6\textwidth]{final_report/imgs/motionmodel.png}
+      \centering
+      \caption{Proposed model targeting motion detection}
+      \label{fig:motionmodel}
+    \end{figure}
+\end{itemize}
+
+\subsubsection{Facial Recess}
+\begin{itemize}
+    \item \textbf{Strong cue (tool change) in the facial recess phase}:
+    
+    In a majority time of Facial Recess phase, a smaller drill bit is used\ref{fig:drill}. This distinctive feature is a strong clue and may explain the good results we got in the Facial Recess phase. To verify this hypothesis, we utilize salient feature heatmaps (GradCam) to show which region in our Neural Network get "fired" the most when predicting the Facial Recess phase. As we can see from figure \ref{fig:FRGradcam}, the model not only focused the drill bit the most but also learn the tool motion in this phase (horizontal motion).
+    \begin{figure}[H]
+      \includegraphics[width=0.9\textwidth]{final_report/imgs/driilchange.png}
+      \centering
+      \caption{Drill bit changing before (left) and within (right) Facial Recess Phase Video 17}
+      \label{fig:drill}
+    \end{figure}
+    \begin{figure}[H]
+      \includegraphics[width=0.9\textwidth]{final_report/imgs/FRGradCam.png}
+      \centering
+      \caption{GradCam heat map visualization of ResNet model for Facial recess prediction.}
+     \label{fig:FRGradcam}
+    \end{figure}
+    
+\end{itemize}
+
+\subsubsection{Dataset}
+\begin{itemize}
+    \item \textbf{Imbalanced Dataset}
+    
+    As one can see from \ref{fig:gt}, Antrum is considered as the transitional phase between Exposure and Facial Recess while this specific phase has the smallest number of frames in our dataset. We tried to solve this with a weighted cross entropy, but sampling techniques such as over sampling and under sampling may tackle this issue better. We will elaborate on this in the Next Steps section.  
+    \item \textbf{Action or Phase recognition}
+    
+    In this project we have been trying to solve the problem from a "\textbd{surgical phase recognition}" perspective based on the assumption that the phase transition is strict. i.e. once surgeons start working on Facial Recess, they won't come back and work on the other phases. While we receiving more videos from the annotator, we noticed this assumption is closer and closer to invalid. More videos showing the surgeon do come back from Facial Recess to do other tasks. After discussing this issue with surgeons, we learned that, although Mastectomy has clear phases and generally speaking Expose, Antrum, Facial Recess happens in sequence, there are times when surgeons go back to clean up from prior stages to improve visualization. Therefore, there is no hard and fast transition to another. In certain period of time, surgeons may "jump" among these phases and instead of proceeding in serial, surgery tasks are more likely to be performed in parallel. 
+    
+    With this observation, we believe our task is closer to "\textbf{Surgical Action Recognition}" where an action ca be recognized based on local motions (i.e, a 10s sequence should have enough information to help us identify which phase we are in. Long temporal information can help us refine the time bounding box but is not required in recognizing actions. We will discuss how to proceed as an action task in the Next Steps section.
+\end{itemize}
+
+\subsection{Proposed Solutions}
+Based on the results and discussions above, our proposed solutions and plans for future works can be categorized into short-term and long-term. We will finished our short-term plans in the coming few weeks, and long-term plans during the coming summer. 
+
+\begin{itemize}
+    \item \textbf{Short term}
+    \begin{enumerate}
+        \item The first issue that needs to be solved is the class imbalance issue. We propsed to ways to construct a balanced dataset: undersampling and oversampling:
+        \begin{enumerate}
+            \item The first one is to eliminate the potential bias in model evaluation.
+            \item The other one is to minimize the imbalance impact on antrum prediction.
+        \end{enumerate}
+        \item According to the discussion session of the antrum phase, the high similarity between antrum and exposure is hypnotized as the leading cause for low recall and precision of the antrum phase. In order to verify this hypothesis, we plan to train a simplified benchmarking model to see if it can distinguish between Antrum and Exposure using noise-free sequences. 
+        \item The other potential measure to compensate for the high similarity between antrum and exposure could be to combine contrastive loss with cross-entropy loss as our loss function. The contrastive loss is low when the positive samples are encoded to similar embedding, and negative samples are encoded differently. The similarity between embedding is calculated based on some distance function (e.g. cosine distance). We hope that such loss function can be beneficial for producing effective embeddings when training a two-stage network.
+    \end{enumerate}
+    \item \textbf{Long term}\\
+    Since we have verified that the benchmarking models can overfit the current dataset but lack generalized ability on new data, our first step is to target the failure cause of the benchmarking models over the new data after eliminating the potential bias due to the dataset. Then we will work on the new model design based on the analysis from these previous experiments. 
+    \begin{enumerate}
+        \item Previous studies have shown that tool presence is significant for cholecystectomy phase segmentation\cite{EndoNet}. However, the mastoidectomy surgery only presents different drills, and we do not introduce any tool-related information into the network. Therefore it could be one potential issue for our embedding extraction within two-stages models. Meanwhile, based on our discussion, tool movement with respect to the anatomy is a significant clue for mastoidectomy surgery phases. Therefore, we would focus on the action recognition rather than simply phase segmentation. To tackle this challenge, we propose two potential strategies:
+        \begin{enumerate}
+            \item If we continue using the phase labels as the only supervision, one potential strategy is to train those two-stages networks (TeCNO and Trans-SVNet) in an end-to-end manner.
+            \item The other strategy is to introduce auxiliary information as weakly-supervision when training the spatial and temporal feature extractor. We hope that introducing new supervision can make the network to focus on some desired information and create valid embeddings to further improve the performance.
+        \end{enumerate}
+        \item Regarding the new network design, we believe that introducing transparent designs into the network could be one promising step to move forward. The other one is to leverage idea from temporal action recognition to design our new network.
+    \end{enumerate}
+\end{itemize}
+
+\section{DL Framework for Mastoidectomy Surgical Phase Segmentation}
+To provide an easy way to implement new and benchmark existing DL methods on our new Mastoid dataset, we implemented a Python project based on PyTorch Lightning\cite{PyTorch_Lightning} with basic data management and training process. This framework can be easily extended with new DL methods and deployed on any machine.
+\begin{itemize}
+    \item Easy environment setup with docker.
+    \item Easy hyperparameters setup with config file
+    \item Dataset/Datamodule base class managing data split, downsampling, sequence split
+    \item Basic metrics logging, and interface for custom metrics
+    \item Pytorch Lightning module base class managing basic training/testing/predicting logics
+    \item Detailed documentations
+\end{itemize}
+Figure \ref{fig:DL_framework} shows the structure of the DL framework. Reusable code for all methods include:
+\begin{itemize}
+    \item Dataset base class
+    \item Data Module
+    \item Trainer base class
+    \item Basic metric logging callback function (Accuracy, Precision, Recall)
+    \item Basic prediction callback (calculate per-class, per-video evaluation results)
+\end{itemize}
+Code needed for new methods include:
+\begin{itemize}
+    \item Dataset specific getitem function
+    \item Optional: custom metrics logging callback
+    \item Optional: custom prediction callback
+\end{itemize}
+
+\begin{figure}[H]
+  \includegraphics[width=0.5\textwidth]{final_report/imgs/DL_framework.png}
+  \centering
+  \caption{Structure of DL framework for Mastoidectomy Surical Phase Segmentation}
+  \label{fig:DL_framework}
+\end{figure}
+
+\vspace{0.25cm}
+\noindent
+Documentations of the DL framework codebase are include in code. For each base class, we provide descriptions about intention and functionality of the class, as well as usage with simple example. Functions are documented with argument descriptions and usage, and we also have inline comments explaining implementation details. Figure \ref{fig:doc_sample} shows some sample documentations for the trainer base class.
+\begin{figure}[H]
+  \includegraphics[width=0.7\textwidth]{final_report/imgs/doc_sample.png}
+  \centering
+  \caption{Documentation sample for trainer base class.}
+  \label{fig:doc_sample}
+\end{figure}
+
+\section{Summary}
+
+In this project, we modified three state of the art surgical phase segmentation models in the context of Cholecystectomy, and tested their performance in segmenting Mastoidectomy Surgical Videos. They are incapable of solving our task as out of the box solutions, and we investigated the reasons behind through experiments. Learning from these experiments, we proposed new strategies to solve our problem and our plan on how we will proceed on this project. The accomplishments for this semester can be summarized below:
+\begin{enumerate}
+    \item K-fold cross-validations training is conducted to evaluate the benchmarking models objectively. 
+    \item In order to introduce interpretability to the embeddings, we apply GradCAM\cite{gradcam} to obtain the salient features of the spatial feature extractor.
+    \item Based on the GradCAM result of embeddings, we implemented some preliminary works on introducing transparent features such as optical flow to our new model design.
+    \item To compensate for the noisy effect of the background frames, such as idle and microscope change,  a more refined segmentation dataset without any invalid frames is used to train an end-to-end model (ResNet with LSTM).
+\end{enumerate}
+In our project, we showed using temporal label alone is not enough as we have no way to guide our model to learn certain characteristic features during training. Other weakly supervision such as tool, action, etc is indispensable in phase segmentation, and may played a more important roles in the success of their models than they claimed in their paper\cite{EndoNet}\cite{TransSVNet}\cite{TeCNO}\cite{lstm}.
+
+
+\newpage
+\section{Management Summary}
+\subsection{Work Distribution}
+    \begin{itemize}
+        \item \textbf{Xucheng Ma} :\\Benchmarked the Trans-SVNet and all the post analysis related. DL Framework for Mastoid Dataset that is reusable and easy to implement for any DL model.
+        
+        \item \textbf{Xiaorui Zhang}:\\Benchmarked the SVRC-Net and all the post analysis related. Codes for results generation and visualization.
+        
+        \item \textbf{Wenkai Luo}:\\Benchmarked the TeCNO and all the post analysis related. Data preprocessing and dataset generation.
+    \end{itemize}
+\subsection{Accomplished vs Planned}
+
+By the end of this semester, we had accomplished all the minimum deliverables and half of the expected deliverables. We will continue to work on this project during the summer.
+\begin{itemize}
+    \item For the minimum deliverables,  a new dataset created from cortical mastoidectomy videos contains all the pre-processed frames. The corresponding annotation labels and relative information are stored in a csv file. The three benchmarking method for cholecystectomy has been successfully implemented. The benchmarking results, including the evaluation metrics and visualization, are also presented in this report. Meanwhile, we also created a reuseable framework based on PyTorch-lighting for this dataset, which provides flexibility and convenience for the future implementation of a new model. 
+    \item As for the expected deliverables, comparative investigations of these three methods have been conducted regarding the model, dataset, and training scheme perspectives. Detailed analysis are presented on the discussion section. The experiments give us comprehensive insights regarding this specific surgery and the model, offering the foundation and direction to design a new deep learning method to tackle current challenges. 
+\end{itemize}
+
+\subsection{Next Steps}
+We will proceed this project following the steps detailed in section 6.3.
+\subsection{Lessons Learned}
+\begin{itemize}
+    \item \textbf{Project management:}
+    \begin{enumerate}
+        \item The weekly meeting is an excellent platform for communicating with our mentors and obtaining valuable feedback. We think we can do better by discussing what we want to present each week before the group meeting with our primary mentor Max.
+        \item Our progress was held for a while because of the IRB amendment. Therefore, we should have started some work that does not require the data earlier, just in case we encounter some unexpected. 
+    \end{enumerate}
+    \item \textbf{Technical:}
+    \begin{enumerate}
+        \item It is essential to have an informative and comprehensive view of our data and objects before we start working on a deep learning project, especially when we are exposed to a new task.
+        \item We struggled for a while about the annotation and the clinical reasoning behind this. To eliminate this issue, we should bring detailed examples and thoughts to our mentor as soon as possible. 
+        \item We think that it will help us develop new ideas by also exploring other computer vision tasks. In addition, the other perspectives considering the question might give an impetus to our ideas.
+    \end{enumerate}
+\end{itemize}
+\section{Technical Appendix}
+All our code is managed on Github, group members and our mentor Max have the access to it. Currently the Github repo is private, and will be public when the project is officially finished with the consent from our mentors. All the code is clearly documented, and easy to reuse following the readme file on Github, which also served as our user manual. A link to the Github repo is on our Wiki page. This codebase is managed by all the teammates on GitHub, to which our mentor Max also has access. This codebase comes with detailed documentation that can be considered one valuable asset of this project.
+
+\newpage
+\bibliography{bibfile}
+\end{document}
