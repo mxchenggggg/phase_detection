@@ -24,7 +24,7 @@ import csv
  * CHANGE THE PKL FILE NAMES HERE *
  **********************************/ '''
 
-model_pkl = "SVRC.pkl"
+model_pkl = "prediction_results.pkl"
 model_name = "SVRC_Net"
 
 
@@ -86,13 +86,14 @@ class networkResults:
     #  Sort pickle and return three sorted list indexes = [1,2,3...] preds = [pred1,pred2..] labels = [label1..]
     def extractPickle(self, pickle):
         # return sorted preds and labels
+        #pickle is a dictionary key is video index
         indexes = []
         preds = []
         labels = []
-        for video in pickle:
-            indexes.append(video[0])
-            preds.append(video[1])
-            labels.append(video[2])
+        for key in pickle.keys():
+            indexes.append(key)
+            preds.append(pickle[key])
+            labels.append(pickle[key])
         indexes_sorted = sorted(indexes)
         preds_sorted = [x for _, x in sorted(zip(indexes, preds))]
         labels_sorted = [x for _, x in sorted(zip(indexes, labels))]

@@ -9,7 +9,30 @@ import pickle
 import pytorch_lightning as pl
 
 
-class SVRCNetModule(MastoidPredictionsCallbackBase):
+class SVRCNetModule(MastoidModuleBase):
+    def _get_seq_last_one(self, outputs):
+        sl = self.hprms.sequence_length
+
+        outputs["preds"] = outputs["preds"][sl-1::sl]
+        outputs["targets"] = outputs["targets"][sl-1::sl]
+        return outputs
+
+    def _forward_and_loss(self, batch: torch.Tensor, batch_idx: int) -> Dict:
+        outputs = self.forward(batch)
+
+        # calculate loss
+        outputs["loss"] = self.loss(outputs)
+
+        return self._get_seq_last_one(outputs)
+
+    def predict_step(self, batch, batch_idx):
+        outputs = self.forward(batch)
+        outputs = self._get_seq_last_one(outputs)
+        self.predictions_outputs.append(outputs)
+        return outputs
+
+
+class SVRCNetClbk(MastoidPredictionsCallbackBase):
     def _split_predictions_outputs_by_videos(
             self, module: MastoidModuleBase, pred_outputs: List) -> Dict:
         # merge all batch results
@@ -22,12 +45,17 @@ class SVRCNetModule(MastoidPredictionsCallbackBase):
         all_preds = torch.cat(all_preds)
 
         # split outputs by videos
-        vid_indexes = module.datamodule.vid_idxes["pred"]
+        seq_start_idxes = module.datamodule.datasets["pred"].valid_seq_start_indexes
         df = module.datamodule.metadata["pred"]
+
+        seq_vid_idxes = df.loc[seq_start_idxes,
+                               module.datamodule.video_index_col].to_numpy().squeeze()
+
+        vid_indexes = module.datamodule.vid_idxes["pred"]
         outputs_by_videos = {}
         for video_idx in vid_indexes:
             # row indexes in df corresponding to the video
-            idxes = df.index[df[module.datamodule.video_index_col] == video_idx]
+            idxes = (seq_vid_idxes == video_idx)
 
             preds = all_preds[idxes]
             targets = all_targets[idxes]
@@ -36,38 +64,3 @@ class SVRCNetModule(MastoidPredictionsCallbackBase):
                 "preds": preds, "targets": targets}
 
         return outputs_by_videos
-
-    def _on_prediction_end_operations(
-            self, trainer: pl.Trainer, module: MastoidModuleBase) -> None:
-        outputs_by_videos = super()._on_prediction_end_operations(trainer, module)
-
-        # outptu metadata file
-        metadata = pd.DataFrame(columns=["path", "video_index"])
-
-        print("saving spatial features...")
-        for video_idx, outputs in outputs_by_videos.items():
-            # save spatial features and targets
-            data = {
-                "spatial_features":
-                outputs["spatial_features"].cpu().numpy().astype(
-                np.float64),
-                "targets": outputs["targets"].cpu().numpy()}
-            output_file_path = os.path.join(
-                self.hprms.pred_output_path,
-                f'V{video_idx:02d}_spatial_features.pkl')
-            with open(output_file_path, "wb") as f:
-                pickle.dump(data, f)
-
-            # add row in metadata file
-            row = {"path": output_file_path, "video_index": video_idx}
-            metadata = metadata.append(row, ignore_index=True)
-
-        # save metadata file
-        metadata_file_name = "SVRC_metadata"
-        metadata.to_csv(
-            os.path.join(
-                self.hprms.pred_output_path, metadata_file_name + ".csv"),
-            index=False)
-        metadata.to_pickle(
-            os.path.join(
-                self.hprms.pred_output_path, metadata_file_name + ".pkl"))

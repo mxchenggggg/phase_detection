@@ -57,7 +57,8 @@ class MastoidDataModule(LightningDataModule):
         # read metadata for all videos
         metafile_path = Path.joinpath(
             self.data_root, self.dataset_metadata_file_path)
-        self.metadata["all"] = pd.read_pickle(metafile_path)
+        # self.metadata["all"] = pd.read_pickle(metafile_path)
+        self.metadata["all"] = pd.read_csv(metafile_path)
 
         assert not self.metadata["all"].isnull().values.any(
         ), "Dataframe contains nan Elements"
@@ -76,7 +77,7 @@ class MastoidDataModule(LightningDataModule):
                 self.hprms, self.metadata[split],
                 self.seq_len, self.vid_idxes[split],
                 transform=self.transform.get_transform(split))
-            print(f"{split} dataset length: {self.datasets[split].__len__()}")
+            print(f"{split} dataset length: {self.datasets[split].__len__()}\n")
 
     def train_dataloader(self) -> DataLoader:
         return self.__get_dataloader("train")

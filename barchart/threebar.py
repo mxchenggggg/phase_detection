@@ -201,7 +201,7 @@ def draw_all(svrc, tecno, trans):
 
 def draw_gt(svrc, tecno, trans):
     fig = plt.figure()
-    fig.set_size_inches(15.5, 12)
+    fig.set_size_inches(15.5, 10)
     ax = fig.add_subplot(111)
     graphLength = 0
     for k, video_num in enumerate(svrc.indxes):
@@ -213,7 +213,7 @@ def draw_gt(svrc, tecno, trans):
             video_num, svrc.name, label_y=k * 200)
 
         graphLength = max(graphLength, len(svrc.preds[k]))
-    labels = [f'V{i:03}' for i in [1, 3, 4, 5, 6, 7, 8, 10, 11, 12, 14]]
+    labels = [f'V{i:03}' for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]]
     y_labels = range(75, 75+len(labels) * 200, 200)
     plt.yticks(y_labels, labels, fontsize=16)
     plt.axis("equal")
@@ -228,26 +228,26 @@ def draw_gt(svrc, tecno, trans):
 
 if __name__ == "__main__":
     root = os.getcwd()
-    inputs_dir = os.path.join(root, "inputs")
+    inputs_dir = os.path.join(root, "inputs/svrc456")
     outputs_dir = os.path.join(root, "outputs_tmp")
     if not os.path.exists(outputs_dir):
         os.makedirs(outputs_dir)
     SVRC = pd.read_pickle(os.path.join(inputs_dir, "SVRC.pkl"))
-    TECNO = pd.read_pickle(os.path.join(inputs_dir, "TECNO.pkl"))
-    TRANS = pd.read_pickle(os.path.join(inputs_dir, "TransSpatialTest.pkl"))
+    # TECNO = pd.read_pickle(os.path.join(inputs_dir, "TECNO.pkl"))
+    # TRANS = pd.read_pickle(os.path.join(inputs_dir, "TransSpatialTest.pkl"))
 
     svrc = networkResults("SVRC", SVRC)
-    tecno = networkResults("TeCNO", TECNO)
-    trans = networkResults("Trans-SV", TRANS)
-    net_list = [svrc, tecno, trans]
+    # tecno = networkResults("TeCNO", TECNO)
+    # trans = networkResults("Trans-SV", TRANS)
+    # net_list = [svrc, tecno, trans]
 
-    for k, video_num in enumerate(svrc.indxes):
-        print(np.array_equal(tecno.labels[k], trans.labels[k]))
-        print(tecno.labels[k] - trans.labels[k])
+    # for k, video_num in enumerate(svrc.indxes):
+        # print(np.array_equal(tecno.labels[k], trans.labels[k]))
+        # print(tecno.labels[k] - trans.labels[k])
     # assert svrc.indxes == tecno.indxes == trans.indxes  # check size
     # num_videos = len(svrc.indxes)
 # 
-    # plt.rcParams.update({'font.size': 22})
-    # sn.set(font_scale=2)
+    plt.rcParams.update({'font.size': 22})
+    sn.set(font_scale=2)
 # 
-    # draw_gt(svrc, tecno, trans)
+    draw_gt(svrc, None, None)

@@ -77,6 +77,7 @@ class MastoidTrainerBase:
         else:
             # training mode
             self._train()
+            # pass
 
     def _train(self) -> None:
         """ Training

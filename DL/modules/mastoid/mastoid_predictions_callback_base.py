@@ -9,6 +9,8 @@ import pickle
 import torch.nn.functional as F
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sn
 
 
 class MastoidPredictionsCallbackBase(pl.Callback):
@@ -105,8 +107,10 @@ class MastoidPredictionsCallbackBase(pl.Callback):
         for vid_idx, outputs in outputs_by_videos.items():
             preds = F.softmax(outputs["preds"], dim=1)
             targets = outputs["targets"]
-            outputs["eval_df"] = self._get_perclass_and_all_metric_eval_df(
+            eval_dfs = self._get_perclass_and_all_metric_eval_and_cm_df(
                 module, preds, targets)
+            for name, df in eval_dfs.items():
+                outputs[name] = df
             prediction_results_all_videos[vid_idx] = outputs
 
         # calculate per-class/all metric result for train/val/test
@@ -121,9 +125,8 @@ class MastoidPredictionsCallbackBase(pl.Callback):
             targets = torch.cat(all_targets)
             preds = F.softmax(torch.cat(all_preds), dim=1)
 
-            df = self._get_perclass_and_all_metric_eval_df(
+            prediction_results_all_videos[split] = self._get_perclass_and_all_metric_eval_and_cm_df(
                 module, preds, targets)
-            prediction_results_all_videos[split] = {"eval_df": df}
 
         # save evaluation results
 
@@ -142,26 +145,50 @@ class MastoidPredictionsCallbackBase(pl.Callback):
             for key, results in prediction_results_all_videos.items():
                 if "eval_df" in results:
                     # print evaluation result dataframe to txt file
-                    df = results["eval_df"].astype(float)
+                    eval_df = results["eval_df"].astype(float)
+                    cm_df = results["cm_df"].astype(int)
+                    cm_normalized_df = results["cm_normalized_df"].astype(float)
+
                     # video index
                     if type(key) == int:
-                        title = f'Video {key}\n'
+                        title = f'Video_{key}'
                     # train/test/val
                     else:
-                        title = f'{key} videos\n'
-                    df_str = df.to_string(float_format='%.3f')
-                    
-                    output_str = f'{title}{df_str}\n'
-                    f.write(output_str + '\n')
+                        title = f'{key}_videos'
+
+                    self._plot_cm(cm_df, title, 'd')
+                    self._plot_cm(cm_normalized_df, title + ' Normalized', '.3f')
+
+                    eval_df_str = eval_df.to_string(float_format='%.3f')
+                    cm_df_str = cm_df.to_string(float_format='%.3f')
+                    cm_normalized_df_str = cm_normalized_df.to_string(
+                        float_format='%.3f')
+
+                    output_str = f'{title}\n{eval_df_str}\n'
+                    output_str += f'Confusion Matrix\n{cm_df_str}\n'
+                    output_str += f'Normalized Confusion Matrix\n{cm_normalized_df_str}\n'
+                    f.write(output_str)
                     print(output_str)
 
         # outputs by videos returned by _split_predictions_outputs_by_videos
         return outputs_by_videos
 
-    def _get_perclass_and_all_metric_eval_df(
+    def _plot_cm(self, cm_df: pd.DataFrame, title, format):
+        fig = plt.figure(figsize=(10, 7))
+        sn.heatmap(cm_df, annot=True, cmap="YlGnBu", fmt=format)
+        plt.xlabel("Predicted Label", fontdict={'fontsize': 22})
+        plt.ylabel("True Label", fontdict={'fontsize': 22})
+        plt.title(f"{title} Confusion Matrix",
+                  fontdict={'fontsize': 20})
+        path = os.path.join(
+            self.hprms.pred_output_path, f"{title}_cm.png")
+        fig.savefig(path)
+        plt.close(fig)
+
+    def _get_perclass_and_all_metric_eval_and_cm_df(
             self, module: MastoidModuleBase, preds: torch.Tensor,
-            targets: torch.Tensor) -> pd.DataFrame:
-        """ Helper function for obtaining evaluation result Dataframe
+            targets: torch.Tensor) -> Dict:
+        """ Helper function for obtaining evaluation result and confusion matrix Dataframe
 
         Args:
             module (MastoidModuleBase): module
@@ -169,13 +196,14 @@ class MastoidPredictionsCallbackBase(pl.Callback):
             targets (torch.Tensor): targets
 
         Returns:
-            pd.DataFrame: evaluation result
+            Dict: {"eval_df": eval_df, "cm_df": cm_df,
+                "cm_normalized_df": cm_normalized_df}
         """
         # class names
         class_names = module.hprms.class_names
 
         # pandans Dataframe to be returned
-        df = pd.DataFrame(
+        eval_df = pd.DataFrame(
             columns=class_names + ["all"],
             index=module.pred_metric_names)
 
@@ -190,18 +218,19 @@ class MastoidPredictionsCallbackBase(pl.Callback):
             for i, class_name in enumerate(class_names):
                 # iterate all classes
                 val = values_by_class[i].item()
-                df.loc[metric_name, class_name] = val
+                eval_df.loc[metric_name, class_name] = val
 
-            df.loc[metric_name, "all"] = values_by_class.mean().item()
+            eval_df.loc[metric_name, "all"] = values_by_class.mean().item()
 
-        # new_col_names = {}
-        # for curr_col_name in df.columns:
-        #     new_col_names[curr_col_name] = f'{curr_col_name: <10}'
-        # new_indexes = {}
-        # for curr_idx in df.index:
-        #     new_indexes[curr_idx] = f'{curr_idx: <10}'
-        # df.rename(columns = new_col_names, index=new_indexes)
-        return df
+        cm_result = module.pred_cm(preds, targets)
+        module.pred_cm.reset()
+        cm_result = cm_result.cpu().numpy()
+        cm_result_normalized = cm_result / np.sum(cm_result, axis=1)[:,np.newaxis]   
+        cm_df = pd.DataFrame(cm_result, index=class_names, columns=class_names)
+        cm_normalized_df = pd.DataFrame(
+            cm_result_normalized, index=class_names, columns=class_names)
+        return {"eval_df": eval_df, "cm_df": cm_df,
+                "cm_normalized_df": cm_normalized_df}
 
     @staticmethod
     def add_specific_args(parser: configargparse.ArgParser):

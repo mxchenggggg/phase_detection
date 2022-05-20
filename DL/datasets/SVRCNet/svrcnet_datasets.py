@@ -10,7 +10,7 @@ class SVRCDataset(MastoidDatasetBase):
         seq_length = self.seq_length
         image_list = []
         label_list = []
-        for i in range(start_index, start_index + seq_len):
+        for i in range(start_index, start_index + seq_length):
             # load image change yml file!
             path = self.df.loc[i, self.path_col]
             image_list.append(torch.load(path))

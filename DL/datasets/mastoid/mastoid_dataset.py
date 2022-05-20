@@ -40,6 +40,7 @@ class MastoidDatasetBase(Dataset):
 
         self.df = df
         self.seq_length = seq_length
+        self.video_indexes = video_indexes
 
         self.transform = transform
 
@@ -50,26 +51,30 @@ class MastoidDatasetBase(Dataset):
 
         # Row indexes of df s.t. the subsequence of seq_length starting from
         #   the row at the index are from the same video
-        self.valid_seq_start_indexes = []
-        if seq_length > 1:
-            for v_index in video_indexes:
+        self.valid_seq_start_indexes = self._get_valid_seq_start_indexes()
+
+    def _get_valid_seq_start_indexes(self):
+        valid_seq_start_indexes = []
+        if self.seq_length > 1:
+            for v_index in self.video_indexes:
                 # row indexes of data from video v_index
                 row_indexes = self.df.index[self.df[self.video_idx_col]
                                             == v_index].tolist()
-                self.valid_seq_start_indexes += row_indexes[:len(
+                valid_seq_start_indexes += row_indexes[:len(
                     row_indexes) - self.seq_length + 1]
-        elif seq_length == 1:
+        elif self.seq_length == 1:
             # per-frame data
-            self.valid_seq_start_indexes = self.df.index
-        elif seq_length == -1:
+            valid_seq_start_indexes = self.df.index
+        elif self.seq_length == -1:
             # per-video data
             self.video_lengths = []
-            for v_index in video_indexes:
+            for v_index in self.video_indexes:
                 # row indexes of data from video v_index
                 row_indexes = self.df.index[self.df[self.video_idx_col]
                                             == v_index].tolist()
                 self.video_lengths.append(len(row_indexes))
-                self.valid_seq_start_indexes.append(row_indexes[0])
+                valid_seq_start_indexes.append(row_indexes[0])
+        return valid_seq_start_indexes
 
     def __getitem__(self, index: int) -> Any:
         """ Get data point at givin index. Derived class must implement this method
@@ -129,3 +134,56 @@ class MastoidPerFrameRawImgDataset(MastoidDatasetBase):
 
     def __getitem__(self, index):
         return self.load_input_file(index), self.load_label(index)
+
+
+class MastoidActionSeqDataset(MastoidDatasetBase):
+    def _get_valid_seq_start_indexes(self):
+        # here action means seqeunce of adjacent frames with same labels
+        action_seq_start_indexes = [0]
+        for v_index in self.video_indexes:
+            df_vid = self.df[self.df[self.video_idx_col] == v_index]
+            label_col_vid = getattr(df_vid, self.label_col)
+            adj_check = (label_col_vid != label_col_vid.shift()).cumsum()
+            vid_action_seq_start_indexes = df_vid.groupby(
+                [self.label_col, adj_check],
+                as_index=False, sort=False)[
+                self.label_col].count().cumsum().to_numpy().squeeze() + action_seq_start_indexes[-1]
+            action_seq_start_indexes += vid_action_seq_start_indexes.tolist()
+
+        valid_seq_start_indexes = []
+        lables_count = [0, 0, 0]
+        for i in range(len(action_seq_start_indexes) - 1):
+            start = action_seq_start_indexes[i]
+            # TODO: only consider expose antrum and facial recess for now
+            if self.df.loc[start, self.label_col] not in [0, 1, 2]:
+                continue
+            end = action_seq_start_indexes[i + 1]
+
+            # ignore actions has number of frames less than sequence length
+            if end - start <= self.seq_length:
+                continue
+            indexes = list(range(start, end - self.seq_length + 1))
+            lables_count[self.df.loc[start, self.label_col]] += len(indexes)
+
+            valid_seq_start_indexes += indexes
+        print(lables_count)
+
+        return valid_seq_start_indexes
+
+    def __getitem__(self, index: int) -> Any:
+        start_index = self.valid_seq_start_indexes[index]
+        seq_length = self.seq_length
+        image_list = []
+        label_list = []
+        for i in range(start_index, start_index + seq_length):
+            # load image
+            path = self.df.loc[i, self.path_col]
+            img = np.array(Image.open(path))
+            if self.transform:
+                img = self.transform(image=img)["image"]
+            img = img.type(torch.FloatTensor)
+            image_list.append(img)
+            # load label
+            label = self.df.loc[i, self.label_col]
+            label_list.append(torch.tensor(label))
+        return torch.stack(image_list), torch.stack(label_list)

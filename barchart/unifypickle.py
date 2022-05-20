@@ -12,7 +12,7 @@ Unify all pickles into one
 2. change the netname below 
 3. run, the unified pickle will be in root folder. Put it in the inputs folder
 """
-netname = "TECNO"
+netname = "SVRC"
 # netname = "SVRC"
 exports = []  # a list save all pk files from all videos
 root = os.getcwd()

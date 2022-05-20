@@ -6,7 +6,7 @@ from torchvision import models, transforms
 class ResLSTM(nn.Module):
     def __init__(self, hparams):
         self.num_classes = hparams.out_features  # 7 in cholec, 3 in Masto
-        self.sequence_length = hparams.sequence_length 
+        self.sequence_length = hparams.sequence_length
         self.batch_size = hparams.batch_size
         self.input_height = hparams.input_height
         self.input_width = hparams.input_width
@@ -36,28 +36,32 @@ class ResLSTM(nn.Module):
         nn.init.xavier_normal(self.lstm.all_weights[0][1])
         nn.init.xavier_uniform(self.fc.weight)
 
-    def forward(self, x):
+    def forward(self, batch):
+        x, targets = batch
+
         # Input size [Batch, sequence_len, 3, H, W] i.e [25,4,3,225,400]
         # First let CNN precess it one by one [25*4,3,255,400]
-        x = x.view(self.batch_size*self.sequence_length, 3, self.input_height, self.input_width)
+        curr_batch_size = x.shape[0]
+
+        x = x.flatten(0, 1)
         x = self.share.forward(x)
         x = x.view(-1, 2048)
-        x = x.view(self.batch_size, self.sequence_length, 2048)
+        x = x.view(curr_batch_size, self.sequence_length, 2048)
+
         self.lstm.flatten_parameters()
-        y, _ = self.lstm(x)
-        y = y.contiguous().view(-1, 512)
-        y = self.fc(y)
-        # y = self.relu(y)
-        # y = self.fc(y)
-        return y
+        preds, _ = self.lstm(x)
+        preds = preds.contiguous().view(-1, 512)
+        preds = self.fc(preds)
+
+        return {"preds": preds, "targets": targets.flatten(0, 1)}
 
     @staticmethod
-    def add_model_specific_args(parser):  # pragma: no cover
+    def add_specific_args(parser):  # pragma: no cover
         reslstm_specific_args = parser.add_argument_group(
             title='reslstm specific args options')
         reslstm_specific_args.add_argument("--pretrained",
-                                            action="store_true",
-                                            help="pretrained on imagenet")
+                                           action="store_true",
+                                           help="pretrained on imagenet")
         reslstm_specific_args.add_argument(
             "--model_specific_batch_size_max", type=int, default=128)
         return parser

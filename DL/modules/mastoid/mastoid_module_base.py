@@ -5,7 +5,7 @@ from typing import Tuple, Dict, List
 from datasets.mastoid.mastoid_datamodule import MastoidDataModule
 from torchmetrics import MetricCollection
 from modules.mastoid.mastoid_metrics_callback_base import MastoidMetricsCallbackBase
-from torchmetrics import Accuracy, Precision, Recall
+from torchmetrics import ConfusionMatrix
 
 
 class MastoidModuleBase(LightningModule):
@@ -46,8 +46,6 @@ class MastoidModuleBase(LightningModule):
         if hparams.predict:
             self.init_prediction_per_class_metrics()
 
-        self.my_acc = Accuracy()
-
     def init_training_metrics(self):
         # calling static method of metric callback class
         metric_list = []
@@ -79,6 +77,8 @@ class MastoidModuleBase(LightningModule):
         metrics = MetricCollection(metric_list)
         self.pred_metrics_by_class = metrics.clone(
             prefix="pred_", postfix="_by_class")
+        self.pred_cm = ConfusionMatrix(
+            num_classes=self.hprms.out_features)
 
     def configure_callbacks(self):
         # metric callback
@@ -150,8 +150,7 @@ class MastoidModuleBase(LightningModule):
         outputs = self.forward(batch)
 
         # calculate loss
-        loss = self.loss(outputs)
-        outputs["loss"] = loss
+        outputs["loss"] = self.loss(outputs)
 
         return outputs
 
