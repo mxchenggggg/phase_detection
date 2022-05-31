@@ -187,3 +187,62 @@ class MastoidActionSeqDataset(MastoidDatasetBase):
             label = self.df.loc[i, self.label_col]
             label_list.append(torch.tensor(label))
         return torch.stack(image_list), torch.stack(label_list)
+
+
+class MastoidActionSeqDataset_s2(Dataset):
+    def __init__(self, hparams, df: pd.DataFrame, seq_length: int,
+                 index_list: List[int],
+                 transform: Optional[Compose] = None,) -> None:
+        """ MastoidDataset for short sequence
+
+        """
+
+        super().__init__()
+        self.hprms = hparams
+
+        self.df = df
+        self.seq_length = seq_length
+        self.index_list = index_list
+
+        self.transform = transform
+
+        # column names in df
+        self.label_col = hparams.label_col_name
+        self.path_col = hparams.path_col_name
+        self.video_idx_col = hparams.video_index_col_name
+
+    def __len__(self) -> int:
+        """ Length of dataset. Same as len(self.index_list) for short sequence datset
+
+        Returns:
+            int: length
+        """
+        return len(self.index_list)
+
+    def __getitem__(self, index: int) -> Any:
+        start_index = self.index_list[index]
+        seq_length = self.seq_length
+        image_list = []
+        label_list = []
+        for i in range(start_index, start_index + seq_length):
+            # load image
+            path = self.df.loc[i, self.path_col]
+            img = np.array(Image.open(path))
+            if self.transform:
+                img = self.transform(image=img)["image"]
+            img = img.type(torch.FloatTensor)
+            image_list.append(img)
+            # load label
+            label = self.df.loc[i, self.label_col]
+            label_list.append(torch.tensor(label))
+        assert torch.all(torch.stack(
+            label_list) == label_list[0]), f"The labels for the whole sequence should be the same, but got{label_list}"
+        return torch.stack(image_list), torch.stack(label_list)
+
+    @staticmethod
+    def add_specific_args(parser: configargparse.ArgParser):
+        mastoid_dataset_args = parser.add_argument_group(
+            title='mastoid_datset specific args options')
+        mastoid_dataset_args.add_argument(
+            "--sequence_length", type=int, required=True)
+        return parser
