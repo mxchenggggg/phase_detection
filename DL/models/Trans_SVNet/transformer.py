@@ -213,7 +213,7 @@ class Transformer(nn.Module):
         super(Transformer, self).__init__()
         self.num_f_maps = hprms.mstcn_f_maps  # 32
         self.dim = hprms.mstcn_f_dim  # 2048
-        self.num_classes = hprms.out_features  # 3
+        self.num_classes = hprms.num_classes  # 3
         self.sequence_length = hprms.transformer_seq_length
 
         self.transformer = Transformer2_3_1(

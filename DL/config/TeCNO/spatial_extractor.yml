@@ -5,7 +5,7 @@ input_width : 400
 num_classes : 3
 # 2. module
 module : mastoid.mastoid_module_base.MastoidModuleBase
-metrics_callback : mastoid.mastoid_metrics_callback_base.MastoidMetricsCallbackBase
+metrics_callback : mastoid.mastoid_metrics_callback_base.MastoidMetricsCallbackWithSpecificity
 predictions_callback : Trans_SVNet.spatial_extractor.TransSVNetSpatExtClbk
 class_weights: [1.0, 2.019093793836055, 0.6161134683394908]
 class_names: ["expose", "antrum", "facial"]
@@ -17,9 +17,9 @@ dataset : mastoid.mastoid_dataset.MastoidPerFrameRawImgDataset
 datamodule: mastoid.mastoid_datamodule.MastoidDataModule
 sequence_length : 1
 num_workers : 64      # for dataloader
-train_video_indexes : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-val_video_indexes : [16, 17, 18]
-test_video_indexes : [16, 17, 18]
+train_video_indexes : [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+val_video_indexes : [4, 5, 6]
+test_video_indexes : [1, 2, 3]
 pred_video_indexes : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 original_fps : 30
 train_downsampled_fps : 1
@@ -32,14 +32,14 @@ norm_mean: [0.485, 0.456, 0.406]
 norm_std: [0.229, 0.224, 0.225]
 apply_training_aug: False
 # 4. training
-project: transsvnet
-experiment_name: transsvnet_spatial_val_161718
+project: tecno_sixfold
+experiment_name: tecno_spatial_test_123_val_456
 gpus : 1 # all available -1
 early_stopping_metric : val_loss
 early_stopping_metric_mode: min
 batch_size : 100
 learning_rate : 0.0005
 min_epochs : 5
-max_epochs : 10
-resume_from_checkpoint: /home/ubuntu/phase_detection/DL/logs/220424-124139_transsvnet_spatial_val_161718/checkpoints/epoch=1-val_loss=0.58.ckpt
-prediction_output_path: /home/ubuntu/data/prediction/TransSVNetSpatial/220424-124139_transsvnet_spatial_val_161718
+max_epochs : 25
+resume_from_checkpoint: /home/ubuntu/phase_detection/phase_detection/DL/logs/220703-213735_tecno_spatial_test_123_val_456/checkpoints/epoch=1-val_loss=0.76.ckpt
+prediction_output_path: /home/ubuntu/data/prediction/TecnoSpatial/220703-213735_tecno_spatial_test_123_val_456

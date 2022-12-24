@@ -46,7 +46,7 @@ class TransSVNetSpatExtClbk(MastoidPredictionsCallbackBase):
             self, trainer: pl.Trainer, module: MastoidModuleBase) -> None:
         outputs_by_videos = super()._on_prediction_end_operations(trainer, module)
 
-        # outptu metadata file
+        # output metadata file
         metadata = pd.DataFrame(columns=["path", "video_index"])
 
         print("saving spatial features...")
@@ -55,7 +55,7 @@ class TransSVNetSpatExtClbk(MastoidPredictionsCallbackBase):
             data = {
                 "spatial_features":
                 outputs["spatial_features"].cpu().numpy().astype(
-                np.float64),
+                    np.float64),
                 "targets": outputs["targets"].cpu().numpy()}
             output_file_path = os.path.join(
                 self.hprms.pred_output_path,

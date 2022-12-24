@@ -53,7 +53,7 @@ class MastoidModuleBase(LightningModule):
             # average of per-class metric
             metric_list.append(
                 metric_class(
-                    num_classes=self.hprms.out_features,
+                    num_classes=self.hprms.num_classes,
                     average='macro'))
 
         # initialize metrics
@@ -66,11 +66,12 @@ class MastoidModuleBase(LightningModule):
         # calling static method of metric callback base class
         metric_list = []
         self.pred_metric_names = []
-        for metric_name, metric_class in MastoidMetricsCallbackBase.get_metric_classes().items():
+        # for metric_name, metric_class in MastoidMetricsCallbackBase.get_metric_classes().items():
+        for metric_name, metric_class in self.metrics_callback_class.get_metric_classes().items():
             self.pred_metric_names.append(metric_name)
             metric_list.append(
                 metric_class(
-                    num_classes=self.hprms.out_features,
+                    num_classes=self.hprms.num_classes,
                     average='none'))
 
         # initialize metrics
@@ -78,7 +79,7 @@ class MastoidModuleBase(LightningModule):
         self.pred_metrics_by_class = metrics.clone(
             prefix="pred_", postfix="_by_class")
         self.pred_cm = ConfusionMatrix(
-            num_classes=self.hprms.out_features)
+            num_classes=self.hprms.num_classes)
 
     def configure_callbacks(self):
         # metric callback

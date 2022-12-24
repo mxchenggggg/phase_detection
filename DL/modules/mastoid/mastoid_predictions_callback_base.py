@@ -36,8 +36,6 @@ class MastoidPredictionsCallbackBase(pl.Callback):
             2. super()._on_prediction_end_operations(trainer, module) returns outputs_by_videos, 
                which can be used for other operations.
 
-    Args:
-        pl (_type_): _description_
     """
 
     def __init__(self, hparms) -> None:
@@ -120,8 +118,12 @@ class MastoidPredictionsCallbackBase(pl.Callback):
             all_targets = []
 
             for vid_idx in module.datamodule.vid_idxes[split]:
+                if vid_idx not in outputs_by_videos:
+                    continue
                 all_preds.append(outputs_by_videos[vid_idx]["preds"])
                 all_targets.append(outputs_by_videos[vid_idx]["targets"])
+            if len(all_targets) == 0:
+                continue
             targets = torch.cat(all_targets)
             preds = F.softmax(torch.cat(all_preds), dim=1)
 
@@ -157,7 +159,8 @@ class MastoidPredictionsCallbackBase(pl.Callback):
                         title = f'{key}_videos'
 
                     self._plot_cm(cm_df, title, 'd')
-                    self._plot_cm(cm_normalized_df, title + ' Normalized', '.3f')
+                    self._plot_cm(cm_normalized_df,
+                                  title + '_Normalized', '.3f')
 
                     eval_df_str = eval_df.to_string(float_format='%.3f')
                     cm_df_str = cm_df.to_string(float_format='%.3f')
@@ -225,7 +228,8 @@ class MastoidPredictionsCallbackBase(pl.Callback):
         cm_result = module.pred_cm(preds, targets)
         module.pred_cm.reset()
         cm_result = cm_result.cpu().numpy()
-        cm_result_normalized = cm_result / np.sum(cm_result, axis=1)[:,np.newaxis]   
+        cm_result_normalized = cm_result / np.sum(
+            cm_result, axis=1)[:, np.newaxis]
         cm_df = pd.DataFrame(cm_result, index=class_names, columns=class_names)
         cm_normalized_df = pd.DataFrame(
             cm_result_normalized, index=class_names, columns=class_names)

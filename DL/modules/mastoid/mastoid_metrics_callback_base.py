@@ -1,4 +1,4 @@
-from torchmetrics import Accuracy, Precision, Recall
+from torchmetrics import Accuracy, Precision, Recall, Specificity
 from typing import Dict, Any, Optional, List
 import pytorch_lightning as pl
 import configargparse
@@ -70,3 +70,13 @@ class MastoidMetricsCallbackBase(pl.Callback):
         mastoid_metrics_callback_args = parser.add_argument_group(
             title='trans_svnet_sptial_module specific args options')
         return parser
+
+
+class MastoidMetricsCallbackWithSpecificity(MastoidMetricsCallbackBase):
+    def __init__(self, hparams) -> None:
+        super().__init__(hparams)
+
+    @staticmethod
+    def get_metric_classes():
+        # Add Specificity
+        return {"Accuracy": Accuracy, "Precision": Precision, "Recall": Recall, "Specificity": Specificity}

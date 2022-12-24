@@ -5,7 +5,7 @@ from torchvision import models, transforms
 
 class ResLSTM(nn.Module):
     def __init__(self, hparams):
-        self.num_classes = hparams.out_features  # 7 in cholec, 3 in Masto
+        self.num_classes = hparams.num_classes  # 7 in cholec, 3 in Masto
         self.sequence_length = hparams.sequence_length
         self.batch_size = hparams.batch_size
         self.input_height = hparams.input_height

@@ -8,7 +8,7 @@ class ResNet50TransSV(nn.Module):
         self.model = models.resnet50(pretrained=True)
         # replace final layer with number of labels
         self.model.fc = Identity()
-        self.fc_phase = nn.Linear(2048, hparams.out_features)
+        self.fc_phase = nn.Linear(2048, hparams.num_classes)
 
     def forward(self, batch):
         x, targets = batch

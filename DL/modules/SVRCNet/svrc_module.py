@@ -7,6 +7,14 @@ import numpy as np
 import os
 import pickle
 import pytorch_lightning as pl
+import torch.nn.functional as F
+
+"""
+To create the pl modules for specific model and experiment,
+Need to derived class:
+    1.MastoidModuleBase
+    2.MastoidPredictionsCallbackBase
+"""
 
 
 class SVRCNetModule(MastoidModuleBase):
@@ -64,3 +72,25 @@ class SVRCNetClbk(MastoidPredictionsCallbackBase):
                 "preds": preds, "targets": targets}
 
         return outputs_by_videos
+
+
+class ActionClbk(MastoidPredictionsCallbackBase):
+    def _eval_and_save_results(
+            self, module: MastoidModuleBase, epoch_outputs: List) -> Dict:
+
+        all_preds = []
+        all_targets = []
+        for outputs in epoch_outputs:
+            all_preds.append(outputs["preds"])
+            all_targets.append(outputs["targets"])
+        targets = torch.cat(all_targets)
+        preds = F.softmax(torch.cat(all_preds), dim=1)
+        prediction_results_test = self._get_perclass_and_all_metric_eval_and_cm_df(
+            module, preds, targets)
+        # pickle file
+        pred_results_file_pkl = os.path.join(
+            os.path.abspath(self.hprms.pred_output_path),
+            "prediction_results.pkl")
+        with open(pred_results_file_pkl, "wb") as f:
+            pickle.dump(prediction_results_test, f)
+        return {"preds": preds, "targets": targets}

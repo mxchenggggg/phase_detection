@@ -57,8 +57,11 @@ class MastoidDataModule(LightningDataModule):
         # read metadata for all videos
         metafile_path = Path.joinpath(
             self.data_root, self.dataset_metadata_file_path)
+
+        self.metadata["all"] = pd.read_pickle(
+            metafile_path) if "pkl" in metafile_path.name else pd.read_csv(metafile_path)
         # self.metadata["all"] = pd.read_pickle(metafile_path)
-        self.metadata["all"] = pd.read_csv(metafile_path)
+        # self.metadata["all"] = pd.read_csv(metafile_path)
 
         assert not self.metadata["all"].isnull().values.any(
         ), "Dataframe contains nan Elements"

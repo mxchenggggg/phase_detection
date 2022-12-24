@@ -1,5 +1,6 @@
 import configargparse
 import os
+import torch
 from datetime import datetime
 
 from pytorch_lightning import Trainer
@@ -64,7 +65,8 @@ class MastoidTrainerBase:
         # 5. loggers
         tb_logger = TensorBoardLogger(self.hprms.log_output_path, name='tb')
         wandb_logger = WandbLogger(
-            name=self.hprms.name, project=self.hprms.project, entity="cis2mastoid")
+            name=self.hprms.name, project=self.hprms.project,
+            entity="cis2mastoid")
 
         self.loggers = [tb_logger, wandb_logger]
 
@@ -100,6 +102,15 @@ class MastoidTrainerBase:
             f"Best: {self.checkpoint_callback.best_model_score} | monitor: {self.checkpoint_callback.monitor} | path: {self.checkpoint_callback.best_model_path}"
             f"\nTesting..."
         )
+
+        # self.module.load_from_checkpoint(
+        #     self.checkpoint_callback.best_model_path, hparams=self.hprms,
+        #     model=self.model, datamodule=self.datamodule,
+        #     metrics_callback_class=self.MetricsCallbackClass,
+        #     predictions_callback_class=self.PredictionsCallbackClass)
+        # torch.save(self.module.model.state_dict(), os.path.join(
+        #     self.hprms.log_output_path, f"best_model.pth"))
+
         trainer.test(ckpt_path=self.checkpoint_callback.best_model_path,
                      datamodule=self.datamodule)
 

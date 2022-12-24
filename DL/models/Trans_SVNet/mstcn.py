@@ -12,7 +12,7 @@ class MultiStageModel(nn.Module):
         self.num_layers = hparams.mstcn_layers  # 10  #5
         self.num_f_maps = hparams.mstcn_f_maps  # 64 #64
         self.dim = hparams.mstcn_f_dim  # 2048 # 2048
-        self.num_classes = hparams.out_features  # 7
+        self.num_classes = hparams.num_classes  # 7
         self.causal_conv = hparams.mstcn_causal_conv
         print(
             f"num_stages_classification: {self.num_stages}, num_layers: {self.num_layers}, num_f_maps:"

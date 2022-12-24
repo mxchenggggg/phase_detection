@@ -7,7 +7,7 @@ def build_configargparser(parser: configargparse.ArgParser):
     model_group.add_argument("--model", type=str, required=True)
     model_group.add_argument("--input_height", default=224, type=int)
     model_group.add_argument("--input_width", default=224, type=int)
-    model_group.add_argument("--out_features", type=int, required=True)
+    model_group.add_argument("--num_classes", type=int, required=True)
 
     """ 2. config module """
     module_group = parser.add_argument_group(title='Module options')

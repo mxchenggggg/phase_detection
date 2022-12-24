@@ -15,7 +15,7 @@ class MastoidDatasetBase(Dataset):
 
     def __init__(self, hparams, df: pd.DataFrame, seq_length: int,
                  video_indexes: List[int],
-                 transform: Optional[Compose] = None,) -> None:
+                 transform: Optional[Compose] = None) -> None:
         """ MastoidDatasetBase Constroctor  
 
         Args:

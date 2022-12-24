@@ -16,7 +16,7 @@ netname = "SVRC"
 # netname = "SVRC"
 exports = []  # a list save all pk files from all videos
 root = os.getcwd()
-inputs_dir = os.path.join(root, "pickles")
+inputs_dir = os.path.join(root, "pickles_6fold")
 outputs_dir = os.path.join(root, "outputs")
 if not os.path.exists(outputs_dir):
     os.makedirs(outputs_dir)

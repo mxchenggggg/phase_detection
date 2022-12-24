@@ -2,7 +2,7 @@
 model : Trans_SVNet.transformer.Transformer
 input_height : 225
 input_width : 400
-out_features : 3
+num_classes : 3
 n_layers : 1
 n_heads : 8
 mstcn_f_maps : 32

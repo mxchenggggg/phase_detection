@@ -8,6 +8,7 @@ import pickle
 from pycm import ConfusionMatrix
 import seaborn as sn
 import csv
+import numpy as np
 
 '''/**********************************************************************************************************
  * RUN THIS FILE TO DRAW ONE BAR and GT TOGETHER   AND CREATE CONFUSION MATRICES FOR EACH VIDEO IN MODEL. *
@@ -29,12 +30,12 @@ model_name = "SVRC_Net"
 
 
 # matplot draw rectangle
-def rect(x, y, c, width=3, height=150):  # inputs: left lower (x,y) and color
+def rect(x, y, c, width=1, height=75):  # inputs: left lower (x,y) and color
     return matplotlib.patches.Rectangle((x, y), width, height, color=c)
 
 
 def drawRibbonGraph(fig, ax, preds, labels, video_num, model_name):
-    pred_y = 200
+    pred_y = 95
     label_y = 0
 
     for i, (pred, label) in enumerate(zip(preds, labels)):
@@ -167,15 +168,23 @@ if __name__ == "__main__":
 
     for k, video_num in enumerate(model.indxes):
         print("Drawing video {}....".format(video_num))
+        tmp_pred = []
+        tmp_label = []
+        for t in model.preds[k]:
+            tmp_pred += [t]*3
+        for t in model.labels[k]:
+            tmp_label += [t]*3
+
         fig = plt.figure()
-        fig.set_size_inches(55.5, 10)
+        fig.set_size_inches(35, 10)
         ax = fig.add_subplot(111)
         fig, ax = drawRibbonGraph(
-            fig, ax, model.preds[k], model.labels[k], video_num, model.name
-        )
+            fig, ax, np.array(tmp_pred),
+            np.array(tmp_label),
+            video_num, model.name)
 
-        graphLength = len(model.preds[k]*3)
-        y_labels = [75, 275]
+        graphLength = len(tmp_label)
+        y_labels = [38, 133]
         labels = ["GroundTruth", model.name]
         plt.yticks(y_labels, labels, fontsize=30)
         plt.xlim([-100, graphLength + 500])

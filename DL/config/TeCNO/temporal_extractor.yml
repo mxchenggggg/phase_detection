@@ -9,21 +9,21 @@ mstcn_f_dim: 2048
 mstcn_stages : 2
 # 2. module
 module :  Trans_SVNet.temporal_extractor.TransSVNetTemporalExtractor
-metrics_callback : mastoid.mastoid_metrics_callback_base.MastoidMetricsCallbackBase
+metrics_callback : mastoid.mastoid_metrics_callback_base.MastoidMetricsCallbackWithSpecificity
 predictions_callback : Trans_SVNet.temporal_extractor.TransSVNetTempExtClbk 
 class_weights: [1.0, 2.019093793836055, 0.6161134683394908]
 class_names: ["expose", "antrum", "facial"]
 # 3. dataset
-data_root: /home/ubuntu/data/prediction/TransSVNetSpatial/220424-124139_transsvnet_spatial_val_161718
+data_root: /home/ubuntu/data/prediction/TecnoSpatial/220703-213735_tecno_spatial_test_123_val_456
 metadata_file: "TransSVNet_Spatial_Features_metadata.pkl"
 dataset : Trans_SVNet.trans_svnet_datasets.TransSVNetTemporalPerVideoDatasetSimple
 datamodule: mastoid.mastoid_datamodule.MastoidDataModule
 sequence_length : -1
 num_workers : 32       # for dataloader
 video_index_col_name : "video_index"
-train_video_indexes : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-val_video_indexes : [16, 17, 18]
-test_video_indexes : [16, 17, 18]
+train_video_indexes : [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+val_video_indexes : [4, 5, 6]
+test_video_indexes : [1, 2, 3]
 pred_video_indexes : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 original_fps : 1
 train_downsampled_fps : 1
@@ -35,8 +35,8 @@ norm_mean: [0.485, 0.456, 0.406]
 norm_std: [0.229, 0.224, 0.225]
 apply_training_aug: False
 # 4. training
-project: transsvnet
-experiment_name: transsvnet_temporal_val_161718
+project: tecno_sixfold
+experiment_name: tecno_temporal_test_123_val_456
 gpus : 1 # all available -1
 early_stopping_metric : val_loss
 early_stopping_metric_mode: min
@@ -44,5 +44,5 @@ batch_size : 1
 learning_rate : 0.00007
 min_epochs : 50
 max_epochs : 100
-resume_from_checkpoint: /home/ubuntu/phase_detection/DL/logs/220424-131713_transsvnet_temporal_val_161718/checkpoints/epoch=19-val_loss=0.76.ckpt
-prediction_output_path: /home/ubuntu/data/prediction/TransSVNetTemporal/220424-131713_transsvnet_temporal_val_161718
+resume_from_checkpoint: /home/ubuntu/phase_detection/phase_detection/DL/logs/220703-215732_tecno_temporal_test_123_val_456/checkpoints/epoch=42-val_loss=0.89.ckpt
+prediction_output_path: /home/ubuntu/data/prediction/TecnoSpatial/220703-215732_tecno_temporal_test_123_val_456
