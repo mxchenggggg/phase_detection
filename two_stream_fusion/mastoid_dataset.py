@@ -18,21 +18,23 @@ from torchvision import transforms
 mastoid_frames = "/home/ubuntu/data/mastoid_frames"
 mastoid_flow = "/home/ubuntu/data/mastoid_optical_flow_5fps"
 
-phases = {"Expose": 0, "Antrum": 1, "Facial_recess": 2, "Idle": 3}
+# phases = {"Expose": 0, "Antrum": 1, "Facial_recess": 2, "Idle": 3}
 # actions = {"Tegmen" : 0, "SS" : 1, "EAC" : 2, "Open_antrum" : 3, "Facial_recess" : 4, "Idle" : 5, "Microscope_zoom" : 6, "Microscope_move" : 6}
-# actions = {"Tegmen" : 0, "SS" : 1, "EAC" : 2, "Open_antrum" : 3, "Facial_recess" : 4, "Idle" : 5}
 actions = {"Tegmen": 0, "SS": 1, "EAC": 2, "Open_antrum": 3, "Facial_recess": 4}
 
-num_class = {"Step": 4, "Task": 5}
+phases = {"Expose": 0, "Antrum": 1, "Facial_recess": 2}
+# actions = {"Tegmen": 0, "SS": 1, "EAC": 2, "Open_antrum": 3, "Expose_incus": 4, "Facial_recess": 5}
 
+num_class = {"Step": len(phases), "Task": len(actions)}
+labels = {"Step": phases, "Task": actions}
 
-class MastoidAugmentation:
+class MastoidTransform:
     def __init__(
-            self, mode, hflip_p=None, affine_p=None, rotate_angle=None,
+            self, augment, hflip_p=None, affine_p=None, rotate_angle=None,
             scale_range=None, color_jitter_p=None, brightness=0.0, contrast=0.0,
             saturation=0.0, hue=0.0, flow_clip=20.0) -> None:
-        # train, val
-        self.mode = mode
+        # Peform data augmentation is set to True.
+        self.augment = augment
 
         # Horizontal flip
         self.hflip_p = hflip_p
@@ -63,7 +65,7 @@ class MastoidAugmentation:
 
         rgb_frames = rgb_frames / 255.
 
-        if self.mode == 'train':
+        if self.augment:
             # Horizontal flip
             hflip = np.random.random()
             if self.hflip_p is not None and hflip < self.hflip_p:
@@ -100,12 +102,15 @@ class MastoidAugmentation:
 
 
 class MastoidTwoSteamDataset(Dataset):
-    def __init__(self, mode, fps, videos, rgb_frames, opf_frames, group_mode,
-                 flow_clip=20.0):
-        print(f'{mode} dataset')
-        self.mode = mode  # train, val
+    def __init__(
+        self, name, transform, fps, videos, rgb_frames, opf_frames,
+            group_mode, class_mode, flow_clip=20.0):
+        print(f'{name} dataset')
+
         self.videos = [f"V{i:03}" for i in videos]
         self.group_mode = group_mode  # video, class
+
+        self.class_mode = class_mode # Task, Step
 
         self.flow_clip = flow_clip
 
@@ -114,12 +119,10 @@ class MastoidTwoSteamDataset(Dataset):
         self.half_opf_frames = opf_frames // 2
         self.sample_stride = opf_frames
 
-        self.labels = actions
-        self.num_class = num_class["Task"]
+        self.labels = labels[self.class_mode]
+        self.num_class = num_class[self.class_mode]
 
-        self.transformation = MastoidAugmentation(
-            mode, hflip_p=0.5, affine_p=0.5, rotate_angle=10, scale_range=(0.9, 1.1),
-            color_jitter_p=0.5, brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1)
+        self.transformation = transform
 
         self.root = {
             "rgb": f"/home/ubuntu/data/mastoid_frames_{fps}fps",
@@ -145,29 +148,38 @@ class MastoidTwoSteamDataset(Dataset):
 
         for video in self.videos:
             cur_df_len = len(self.dfs["rgb"])
-            for mode in ["rgb", "flow"]:
+            for stream in ["rgb", "flow"]:
                 df = pd.read_csv(os.path.join(
-                    self.root[mode],
+                    self.root[stream],
                     video, f"{video}.csv"))
-                self.dfs[mode] = pd.concat(
-                    [self.dfs[mode], df], ignore_index=True)
+                self.dfs[stream] = pd.concat(
+                    [self.dfs[stream], df], ignore_index=True)
 
             # {lable_1 : df_idxes, ..., lable_n : df_idxes}
             video_class_idxes = {label: np.empty(0, dtype=int)
                                  for label, _ in self.labels.items()}
-            # Find adjacent rows of same task label.
-            adj_check = (df["Task"] != df["Task"].shift()).cumsum()
-            groups_by_label = df[['Index', "Task"]].groupby(adj_check).agg(list)
+            # Find adjacent rows of same label.
+            adj_check = (df[self.class_mode] != df[self.class_mode].shift()).cumsum()
+            groups_by_label = df[['Index', self.class_mode]].groupby(adj_check).agg(list)
 
             for _, row in groups_by_label.iterrows():
-                label = row["Task"][0]
+                label = row[self.class_mode][0]
                 if label not in self.labels:
                     continue
 
                 idxes = np.array(row['Index'][self.half_opf_frames: -(self.opf_frames * (
                     self.rgb_frames + 1) + self.half_opf_frames - 1)], dtype=int)
-                idxes = idxes[range(
-                    0, len(idxes), self.sample_stride)] + cur_df_len
+                
+                if len(idxes) == 0:
+                    continue
+
+                idx_idxes = range(0, len(idxes), self.sample_stride)
+                # idx_noise = np.random.randint(-self.sample_stride // 2, self.sample_stride // 2 + 1, len(idx_idxes))
+                # idx_noise[0] = 0
+                # idx_noise[-1] = 0
+                # idx_idxes += idx_noise
+                
+                idxes = idxes[idx_idxes] + cur_df_len
 
                 video_class_idxes[label] = np.append(
                     video_class_idxes[label], idxes)
@@ -237,15 +249,17 @@ class MastoidTwoSteamDataset(Dataset):
 
     def __getitem__(self, index):
         # assert index >= 0 and index < self.df_length, f'Invalid df idx {index}, maximum idx: {self.df_length}'
-        label_name = self.dfs["rgb"].iloc[index]["Task"]
+        label_name = self.dfs["rgb"].iloc[index][self.class_mode]
         # assert label_name in self.labels, f'Invalid label {label_name}'
 
         label_idx = self.labels[label_name]
-        label_one_hot = np.zeros(num_class["Task"], dtype=np.float32)
+        label_one_hot = np.zeros(num_class[self.class_mode], dtype=np.float32)
         label_one_hot[label_idx] = 1.
 
-        rgb_frames = self.read_rgb(index)
-        flow_stacks = self.read_flow(index)
+        # stride = np.random.randint(1, self.opf_frames)
+        stride = self.opf_frames
+        rgb_frames = self.read_rgb(index, stride)
+        flow_stacks = self.read_flow(index, stride)
 
         rgb_frames, flow_stacks = self.transformation(rgb_frames, flow_stacks)
 
@@ -255,10 +269,9 @@ class MastoidTwoSteamDataset(Dataset):
     def __len__(self):
         return self.dataset_length
 
-    def read_rgb(self, df_idx):
+    def read_rgb(self, df_idx, stride):
         frames = []
-        for idx in range(df_idx, df_idx + self.rgb_frames * self.opf_frames,
-                         self.opf_frames):
+        for idx in range(df_idx, df_idx + self.rgb_frames * stride, stride):
             # assert idx >= 0 and idx < self.df_length, f'Invalid df idx {idx}, maximum idx: {self.df_length}'
             rgb = cv2.cvtColor(
                 cv2.imread(self.dfs["rgb"].iloc[idx]['Img Path']),
@@ -268,11 +281,10 @@ class MastoidTwoSteamDataset(Dataset):
         frames = np.asarray(frames, dtype=np.float32).transpose([0, 3, 1, 2])
         return torch.from_numpy(frames)
 
-    def read_flow(self, df_idx):
+    def read_flow(self, df_idx,stride):
         flow_stacks = []
         for rgb_idx in range(
-                df_idx, df_idx + self.rgb_frames * self.opf_frames,
-                self.opf_frames):
+                df_idx, df_idx + self.rgb_frames * stride, stride):
             flow_stack = []
             for idx in range(
                     rgb_idx - self.half_opf_frames, rgb_idx + self.half_opf_frames):
@@ -356,26 +368,33 @@ class BatchSampler():
 
 
 if __name__ == "__main__":
+
+    train_transform = MastoidTransform(
+        augment=True, hflip_p=0.5, affine_p=0.5, rotate_angle=0.,
+        scale_range=(0.9, 1.1),
+        color_jitter_p=0.5, brightness=0.2, contrast=0.2,
+        saturation=0.2, hue=0.1)
+
     dataset = MastoidTwoSteamDataset(
-        "train", 15, [1, 2], 5, 10, "class")
+        "train", train_transform, 15, [1, 2, 4 ,5, 6, 7 ,8 ,10, 11, 12], 5, 10, "class", "Step")
     dataloader = DataLoader(dataset,
                             batch_sampler=BatchSampler(
-                                dataset.group_idxes, 16, debug=True),
+                                dataset.group_idxes, 32, debug=True),
                             num_workers=32)
 
-    model = TwoStreamFusion(5, 10, 225, 400)
-    model.cuda()
-    model = nn.DataParallel(model)
+    # model = TwoStreamFusion(5, 10, 225, 400)
+    # model.cuda()
+    # model = nn.DataParallel(model)
 
-    for x in tqdm(dataloader):
-        rgb, flow, label_one_hot = x
+    # for x in tqdm(dataloader):
+        # rgb, flow, label_one_hot = x
 
         # print(rgb.shape, flow.shape, label_one_hot.shape)
         # print(rgb[0,0,0,100,100:110])
         # print(flow[0,0,0,100,100:110])
         # print(label_one_hot[0])
 
-        rgb = Variable(rgb.cuda())
-        flow = Variable(flow.cuda())
+        # rgb = Variable(rgb.cuda())
+        # flow = Variable(flow.cuda())
 
-        out = model((rgb, flow))
+        # out = model((rgb, flow))

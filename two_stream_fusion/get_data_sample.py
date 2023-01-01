@@ -3,12 +3,19 @@ import cv2
 import os
 
 from opf_visulize import flow_to_image
-from mastoid_dataset import MastoidTwoSteamDataset, BatchSampler
+from mastoid_dataset import MastoidTwoSteamDataset, BatchSampler, MastoidTransform
 from torch.utils.data import DataLoader
 
 def get_data_sample():
+
+    train_transform = MastoidTransform(
+        augment=True, hflip_p=0.5, affine_p=0.5, rotate_angle=0.,
+        scale_range=(0.9, 1.1),
+        color_jitter_p=0.5, brightness=0.2, contrast=0.2,
+        saturation=0.2, hue=0.1)
+
     dataset = MastoidTwoSteamDataset(
-        "train", 15, [1], 5, 10, "class")
+        "train", train_transform, 15, [1, 2, 4], 5, 10, "class", "Task")
     dataloader = DataLoader(dataset,
                             batch_sampler=BatchSampler(
                                 dataset.group_idxes, 1, debug=True))

@@ -47,17 +47,17 @@ from torch.utils.data import Dataset, DataLoader
 # img = rgb_normalize(image=img)["image"].transpose(2, 0, 1)
 # print(type(img), img.shape, img.dtype, np.min(img), np.max(img))
 
-flow_u_file = "/home/ubuntu/data/mastoid_optical_flow_15fps/V001/009350_hori.png"
-flow_v_file = "/home/ubuntu/data/mastoid_optical_flow_15fps/V001/009350_vect.png"
+# flow_u_file = "/home/ubuntu/data/mastoid_optical_flow_15fps/V001/009350_hori.png"
+# flow_v_file = "/home/ubuntu/data/mastoid_optical_flow_15fps/V001/009350_vect.png"
 
-flow_u = cv2.imread(flow_u_file, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-flow_v = cv2.imread(flow_v_file, cv2.IMREAD_GRAYSCALE).astype(np.float32)
+# flow_u = cv2.imread(flow_u_file, cv2.IMREAD_GRAYSCALE).astype(np.float32)
+# flow_v = cv2.imread(flow_v_file, cv2.IMREAD_GRAYSCALE).astype(np.float32)
 
-flow_uv = np.stack([flow_u, flow_v]) / 255. * 40. - 20.
-flow_uv = flow_uv.transpose(1, 2, 0)
-from opf_visulize import flow_to_image
-flow_img = flow_to_image(flow_uv)
-cv2.imwrite('./test.png', flow_img)
+# flow_uv = np.stack([flow_u, flow_v]) / 255. * 40. - 20.
+# flow_uv = flow_uv.transpose(1, 2, 0)
+# from opf_visulize import flow_to_image
+# flow_img = flow_to_image(flow_uv)
+# cv2.imwrite('./test.png', flow_img)
 
 # flow = np.stack([flow_u, flow_v])
 # print(type(flow), flow.shape, flow.dtype, np.min(flow), np.max(flow))
@@ -90,3 +90,45 @@ cv2.imwrite('./test.png', flow_img)
 # print(b)
 
 # print(np.ceil(8 / 3))
+
+
+from torchmetrics import Accuracy, Precision, ConfusionMatrix
+import pandas as pd
+import seaborn as sn
+from matplotlib import pyplot as plt
+
+classes = ["Tegmen", "SS", "EAC", "Open_antrum", "Facial_recess"]
+num_classes = 5
+
+target = torch.tensor(np.repeat(np.arange(5), 20))
+preds = torch.tensor(np.random.permutation(np.repeat(np.arange(5), 20)))
+
+acc_all_m = Accuracy(num_classes=num_classes)
+acc_per_m = Accuracy(num_classes=num_classes, average=None)
+
+prec_all_m = Precision(num_classes=num_classes)
+prec_per_m = Precision(num_classes=num_classes, average=None)
+
+c_matrix_m = ConfusionMatrix(num_classes=num_classes)
+c_matrix_norm_m = ConfusionMatrix(num_classes=num_classes, normalize='true')
+
+acc_all = acc_all_m(preds, target)
+acc_per = acc_per_m(preds, target)
+acc = np.append(acc_per, acc_all)
+
+prec_all = prec_all_m(preds, target)
+prec_per = prec_per_m(preds, target)
+prec = np.append(prec_per, prec_all)
+
+metrics_df = pd.DataFrame(np.stack([acc, prec]), index=['acc','prec'], columns=classes + ['all'])
+
+c_matrix = c_matrix_m(preds, target).numpy()
+c_matrix_norm = c_matrix_norm_m(preds, target).numpy()
+
+cm_df = pd.DataFrame(c_matrix, index=classes, columns=classes)
+cm_df_norm = pd.DataFrame(c_matrix_norm, index=classes, columns=classes)
+
+plt.figure(figsize=(12, 7))    
+fig = sn.heatmap(cm_df_norm, annot=True).get_figure()
+
+plt.savefig("test.png")
