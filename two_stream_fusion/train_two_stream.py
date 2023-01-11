@@ -156,12 +156,23 @@ def val_one_epoch(dataloader, model, loss_fn, args):
 
 
 def train(
-        start_epoch, dataloaders, model, loss_fn, optimizer, scheduler, scaler,
-        tb_writer, args):
+        start_epoch, best_val_acc, dataloaders, model, loss_fn, optimizer,
+        scheduler, scaler, tb_writer, args):
     with torch.no_grad():
         avg_vloss, eval_result = val_one_epoch(
             dataloaders['val'], model, loss_fn, args)
     print(f'Initial validation loss {avg_vloss:06f}')
+
+    def save_ckpt(path):
+        torch.save({'epoch': epoch_idx,
+                'best_val_acc': best_val_acc,
+                'model_state_dict': model.module.state_dict(),
+                'opt_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'scaler_state_dict': scaler.state_dict(),
+                'args': args,
+                'val_eval': val_eval,
+                'last_train_eval': last_train_eval}, path)
 
     for epoch_idx in range(start_epoch, args.num_epochs):
         print(f'epoch {epoch_idx}')
@@ -195,6 +206,15 @@ def train(
                 {'Training': last_train_all, 'Validation': val_all},
                 epoch_idx)
 
+            for class_name in classes:
+                last_train_class = last_train_eval['metrics'].loc[m][class_name]
+                val_class = val_eval['metrics'].loc[m][class_name]
+
+                tb_writer.add_scalars(
+                    f'Training vs. Validation {class_name} {m}',
+                    {'Training': last_train_class, 'Validation': val_class},
+                    epoch_idx)
+
         tb_writer.add_figure(
             "CM/train", get_cm_plot(last_train_eval['cm_norm']),
             epoch_idx)
@@ -207,29 +227,30 @@ def train(
         # if not skip_lr_scheduler:
         # scheduler.step()
 
+        cur_val_acc = val_eval['metrics'].loc['ACC']['all']
+        if cur_val_acc > best_val_acc:
+            best_val_acc = cur_val_acc
+            path = os.path.join(args.ckpt_path, f'best_val_acc.ckpt')
+            save_ckpt(path)
+            print(
+                f'save checkpoint with best validation accuracy {cur_val_acc:.6f} to {path}')
+
         if (epoch_idx + 1) % args.ckpt_per_epoches == 0 or epoch_idx + 1 == args.num_epochs:
             path = os.path.join(
                 args.ckpt_path, f'ckpt_epoch_{epoch_idx:02d}.ckpt')
-            torch.save({'epoch': epoch_idx,
-                        'model_state_dict': model.module.state_dict(),
-                        'opt_state_dict': optimizer.state_dict(),
-                        'scheduler_state_dict': scheduler.state_dict(),
-                        'scaler_state_dict': scaler.state_dict(),
-                        'args': args,
-                        'val_eval': val_eval,
-                        'last_train_eval': last_train_eval}, path)
-            print(f'save checkpoint {path}')
+            save_ckpt(path)
+            print(f'save checkpoint to {path}')
 
 
 if __name__ == "__main__":
     # --------- Arg Parse ---------
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--model', type=str, default="two_stream")
+    parser.add_argument('-exp', '--experiment', type=str, default="two_stream")
     parser.add_argument('-r', '--root', type=str, default="runs")
     parser.add_argument('-ag', '--accum_iter', type=int, default=2)
     parser.add_argument('-lps', '--logging_per_steps', type=int, default=10)
-    parser.add_argument('-cpe', '--ckpt_per_epoches', type=int, default=5)
+    parser.add_argument('-cpe', '--ckpt_per_epoches', type=int, default=10)
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.00001)
     parser.add_argument('-ckpt', '--checkpoint', type=str, default="")
     parser.add_argument('-no_aug', '--no_augmentation',
@@ -255,9 +276,9 @@ if __name__ == "__main__":
     parser.add_argument('-cmode', '--class_mode', type=str, default='Step')
 
     args = parser.parse_args()
-    
+
     print(args)
-    
+
     checkpoint = None
     if args.checkpoint != "":
         print(f'Loaded from checkpoint {args.checkpoint}.')
@@ -266,11 +287,11 @@ if __name__ == "__main__":
         args = checkpoint['args']
         args.num_epochs = new_num_epochs
     else:
-        if args.model == 'debug':
-            run_path = f'./runs/{args.model}'
+        if args.experiment == 'debug':
+            run_path = f'./runs/{args.experiment}'
         else:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            run_path = f'./runs/{args.model}_{timestamp}'
+            run_path = f'./runs/{args.experiment}_{timestamp}'
         args.tb_path = os.path.join(run_path, 'tb')
 
         ckpt_path = os.path.join(run_path, 'ckpts')
@@ -286,11 +307,11 @@ if __name__ == "__main__":
         classes = ["Expose", "Antrum", "Facial_recess"]
         classes_loss_weights = [1.0, 1.05, 1.0]
     num_classes = len(classes)
-    
+
     print('clsses: ', classes)
     print(f"Data augmentation: {'False' if args.no_augmentation else 'True'}")
     print(f"Freeze pretrained model: {'True' if args.freeze_base else 'False'}")
-    print(f"Experiment: {args.model}")
+    print(f"Experiment: {args.experiment}")
 
     # --------- Evaluation ---------
 
@@ -377,7 +398,8 @@ if __name__ == "__main__":
     # Model.
     model = TwoStreamFusion(
         args.rgb_frames, args.opf_frames, 225, 400, num_classes,
-        dropout=args.dropout, freeze_base=args.freeze_base, backbone_name=args.backbone)
+        dropout=args.dropout, freeze_base=args.freeze_base,
+        backbone_name=args.backbone)
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model_state_dict'])
     model.cuda()
@@ -385,6 +407,7 @@ if __name__ == "__main__":
 
     # Loss function.
     loss_fn = nn.CrossEntropyLoss(weight=torch.FloatTensor(classes_loss_weights).cuda(), label_smoothing=0.1)
+    # loss_fn = nn.CrossEntropyLoss()
 
     # Optimizer.
     optimizer = Adam(model.parameters(), lr=args.learning_rate)
@@ -400,8 +423,12 @@ if __name__ == "__main__":
     if checkpoint is not None:
         scaler.load_state_dict(checkpoint["scaler_state_dict"])
 
-    # First epoch index.
-    start_epoch = 0 if checkpoint is None else checkpoint['epoch'] + 1
+    if checkpoint is None:
+        start_epoch = 0
+        best_val_acc = 0.0
+    else:
+        start_epoch = checkpoint['epoch'] + 1
+        best_val_acc = checkpoint['best_val_acc']
 
-    train(start_epoch, dataloaders, model, loss_fn,
+    train(start_epoch, best_val_acc, dataloaders, model, loss_fn,
           optimizer, scheduler, scaler, writer, args)

@@ -43,7 +43,6 @@
 #
 # python3.8 train_two_stream.py -e 3 -m cv_t2_14_15 -tv 1 2 14 5 6 7 8 10 11 12 -vv 4 15
 #
-# python3.8 train_two_stream.py -e 3 -m cv_t2_14 -tv 1 2 4 5 6 7 8 10 11 12 15 -vv 14
 # python3.8 train_two_stream.py -e 3 -m cv_10videos_1_5 -tv 2 4 6 7 8 10 11 12 -vv 1 5
 # python3.8 train_two_stream.py -e 3 -m cv_10videos_2_4 -tv 1 5 6 7 8 10 11 12 -vv 2 4
 # python3.8 train_two_stream.py -e 3 -m cv_10videos_6_7 -tv 1 2 4 5 8 10 11 12 -vv 6 7
@@ -60,7 +59,17 @@
 # python3.8 train_two_stream.py -e 3 -m cv_10videos_4_8 -tv 1 2 5 6 7 10 11 12 -vv 4 8
 # python3.8 train_two_stream.py -e 3 -m cv_10videos_2_4_1.0_1.05_1.0 -tv 1 5 6 7 8 10 11 12 -vv 2 4
 #
-python3.8 train_two_stream.py -e 12 -ckpt ./runs/cv_10videos_2_4_1.0_1.05_1.0_20230101_025323/ckpts/ckpt_epoch_05.ckpt
-
-
-
+# python3.8 train_two_stream.py -e 12 -ckpt ./runs/cv_10videos_2_4_1.0_1.05_1.0_20230101_025323/ckpts/ckpt_epoch_05.ckpt
+# Experiment Group 6
+# python3.8 train_two_stream.py -e 5 -exp cv_10videos_test2_1_5  -tv 2 4 6 7 8 10 11 12 -vv 1 5
+# python3.8 train_two_stream.py -e 5 -exp cv_10videos_test2_2_12 -tv 1 4 5 6 7 8 10 11  -vv 2 12
+# python3.8 train_two_stream.py -e 5 -exp cv_10videos_test2_4_11 -tv 1 2 5 6 7 8 10 12  -vv 4 11
+# python3.8 train_two_stream.py -e 5 -exp cv_10videos_test2_6_7  -tv 1 2 4 5 8 10 11 12 -vv 6 7
+# python3.8 train_two_stream.py -e 5 -exp cv_10videos_test2_8_10 -tv 1 2 4 5 6 7 11 12  -vv 8 10
+# 
+python3.8 train_two_stream.py -e 15 -exp cv_10videos_test2_lr_5e-6_2_12 -tv 1 4 5 6 7 8 10 11  -vv 2 12 -lr 0.000005
+python3.8 train_two_stream.py -e 15 -exp cv_10videos_test2_lr_5e-6_4_11 -tv 1 2 5 6 7 8 10 12  -vv 4 11 -lr 0.000005
+#
+# python3.8 train_two_stream.py -e 15 -exp cv_10videos_test2_lr_5e-6_1_5  -tv 2 4 6 7 8 10 11 12 -vv 1 5  -lr 0.000005
+# python3.8 train_two_stream.py -e 15 -exp cv_10videos_test2_lr_5e-6_6_7  -tv 1 2 4 5 8 10 11 12 -vv 6 7  -lr 0.000005
+# python3.8 train_two_stream.py -e 15 -exp cv_10videos_test2_lr_5e-6_8_10 -tv 1 2 4 5 6 7 11 12  -vv 8 10 -lr 0.000005

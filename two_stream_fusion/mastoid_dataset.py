@@ -25,6 +25,8 @@ actions = {"Tegmen": 0, "SS": 1, "EAC": 2, "Open_antrum": 3, "Facial_recess": 4}
 phases = {"Expose": 0, "Antrum": 1, "Facial_recess": 2}
 # actions = {"Tegmen": 0, "SS": 1, "EAC": 2, "Open_antrum": 3, "Expose_incus": 4, "Facial_recess": 5}
 
+phase_actions = {"Expose": ["Tegmen", "SS", "EAC"], "Antrum" : ["Open_antrum", "Expose_incus"], "Facial_recess" : ["Facial_recess"]}
+
 num_class = {"Step": len(phases), "Task": len(actions)}
 labels = {"Step": phases, "Task": actions}
 
@@ -160,12 +162,15 @@ class MastoidTwoSteamDataset(Dataset):
                                  for label, _ in self.labels.items()}
             # Find adjacent rows of same label.
             adj_check = (df[self.class_mode] != df[self.class_mode].shift()).cumsum()
-            groups_by_label = df[['Index', self.class_mode]].groupby(adj_check).agg(list)
+            groups_by_label = df[['Index', 'Step', 'Task']].groupby(adj_check).agg(list)
 
             for _, row in groups_by_label.iterrows():
                 label = row[self.class_mode][0]
                 if label not in self.labels:
                     continue
+
+                # if self.class_mode == "Step" and row['Task'][0] not in phase_actions[label]:
+                    # continue
 
                 idxes = np.array(row['Index'][self.half_opf_frames: -(self.opf_frames * (
                     self.rgb_frames + 1) + self.half_opf_frames - 1)], dtype=int)
@@ -375,8 +380,9 @@ if __name__ == "__main__":
         color_jitter_p=0.5, brightness=0.2, contrast=0.2,
         saturation=0.2, hue=0.1)
 
+    videos = [1, 5, 6, 7 ,8 ,10, 11, 12]
     dataset = MastoidTwoSteamDataset(
-        "train", train_transform, 15, [1, 2, 4 ,5, 6, 7 ,8 ,10, 11, 12], 5, 10, "class", "Step")
+        "train", train_transform, 15, videos, 5, 10, "class", "Step")
     dataloader = DataLoader(dataset,
                             batch_sampler=BatchSampler(
                                 dataset.group_idxes, 32, debug=True),
@@ -398,3 +404,8 @@ if __name__ == "__main__":
         # flow = Variable(flow.cuda())
 
         # out = model((rgb, flow))
+
+    # for vs in [[1, 5], [2, 12], [4, 11], [8, 10], [6, 7]]:
+        # print(f'video {vs}')
+        # dataset = MastoidTwoSteamDataset(
+        # "train", train_transform, 15, vs, 5, 10, "class", "Step")
